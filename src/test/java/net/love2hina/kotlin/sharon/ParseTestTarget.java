@@ -19,6 +19,15 @@ public class ParseTestTarget {
     /** フィールド */
     private int fieldInt = 0;
 
+    public enum MyEnum {
+
+    }
+
+
+    public @interface MyAnnotation {
+
+    }
+
     /**
      * メソッド.
      *

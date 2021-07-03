@@ -7,7 +7,7 @@ import javax.xml.namespace.NamespaceContext
 import javax.xml.stream.XMLOutputFactory
 import javax.xml.stream.XMLStreamWriter
 
-class SmartXMLStreamWriter(file: File): XMLStreamWriter, Closeable {
+internal class SmartXMLStreamWriter(file: File): XMLStreamWriter, Closeable {
 
     private val fileWriter: Writer
 
@@ -17,6 +17,11 @@ class SmartXMLStreamWriter(file: File): XMLStreamWriter, Closeable {
 
     private var emptyElement: Boolean = false
 
+    private var level: Int = 0
+
+    /** インデントサイズ */
+    var indentSize: Int = 1
+
     init {
         fileWriter = file.bufferedWriter(Charsets.UTF_8)
         xmlWriter = XMLOutputFactory.newInstance().createXMLStreamWriter(fileWriter)
@@ -24,37 +29,41 @@ class SmartXMLStreamWriter(file: File): XMLStreamWriter, Closeable {
 
     private fun startElement() {
         emptyElement = true
+        ++level
+    }
+
+    private fun outputIndent() {
+        xmlWriter.writeCharacters(lineSeparator)
+        if (level > 0)
+            xmlWriter.writeCharacters(" ".repeat(indentSize * level))
     }
 
     private fun outputElementBody() {
-        xmlWriter.writeCharacters(lineSeparator)
+        outputIndent()
         emptyElement = false
     }
 
     private fun endElement() {
+        --level
         if (!emptyElement) {
-            xmlWriter.writeCharacters(lineSeparator)
+            outputIndent()
         }
         emptyElement = false
     }
 
     override fun writeStartDocument() {
         xmlWriter.writeStartDocument()
-        startElement()
     }
 
     override fun writeStartDocument(version: String?) {
         xmlWriter.writeStartDocument(version)
-        startElement()
     }
 
     override fun writeStartDocument(encoding: String?, version: String?) {
         xmlWriter.writeStartDocument(encoding, version)
-        startElement()
     }
 
     override fun writeEndDocument() {
-        endElement()
         xmlWriter.writeEndDocument()
     }
 
