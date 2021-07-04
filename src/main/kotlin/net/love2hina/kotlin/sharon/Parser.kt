@@ -3,25 +3,16 @@ package net.love2hina.kotlin.sharon
 import com.github.javaparser.StaticJavaParser
 import com.github.javaparser.ast.CompilationUnit
 import com.github.javaparser.ast.ImportDeclaration
-import com.github.javaparser.ast.Modifier
 import com.github.javaparser.ast.PackageDeclaration
 import com.github.javaparser.ast.body.*
-import com.github.javaparser.ast.comments.BlockComment
-import com.github.javaparser.ast.comments.Comment
-import com.github.javaparser.ast.comments.JavadocComment
-import com.github.javaparser.ast.comments.LineComment
-import com.github.javaparser.ast.expr.AnnotationExpr
-import com.github.javaparser.ast.expr.MarkerAnnotationExpr
-import com.github.javaparser.ast.expr.NormalAnnotationExpr
-import com.github.javaparser.ast.expr.SingleMemberAnnotationExpr
+import com.github.javaparser.ast.comments.*
+import com.github.javaparser.ast.expr.*
 import com.github.javaparser.ast.modules.ModuleDeclaration
-import com.github.javaparser.ast.stmt.BlockStmt
-import com.github.javaparser.ast.type.ReferenceType
-import com.github.javaparser.ast.type.TypeParameter
+import com.github.javaparser.ast.stmt.*
 import com.github.javaparser.ast.visitor.VoidVisitorAdapter
 import java.io.File
 import java.nio.charset.StandardCharsets.UTF_8
-import java.util.function.Consumer
+import java.util.*
 
 internal class Parser(val file: File) {
 
@@ -378,13 +369,102 @@ internal class Parser(val file: File) {
          * ブロックステートメント.
          */
         override fun visit(n: BlockStmt?, arg: Void?) {
+            n!!
 
             writer.writeStartElement("block")
 
-            n!!.statements.forEach { it.accept(this, arg) }
+            n.statements.forEach { it.accept(this, arg) }
             n.comment.ifPresent { it.accept(this, arg) }
 
             writer.writeEndElement()
+        }
+
+        /**
+         * Ifステートメント.
+         */
+        override fun visit(n: IfStmt?, arg: Void?) {
+            n!!
+
+            // 条件分岐の出力
+            writer.writeStartElement("condition")
+            writer.writeAttribute("type", "if")
+
+            // 第1条件
+            writer.writeStartElement("case")
+            writer.writeAttribute("condition", n.condition.toString())
+
+            // コメント
+            n.comment.ifPresent { it.accept(this, arg) }
+            // 本文
+            n.thenStmt.accept(this, arg)
+
+            writer.writeEndElement()
+
+            // 継続条件
+            visitInElse(n.elseStmt, arg)
+
+            writer.writeEndElement()
+        }
+
+        /**
+         * Elseステートメント.
+         */
+        private fun visitInElse(n: Optional<Statement>, arg: Void?) {
+
+            n.ifPresent { e ->
+                if (e is IfStmt) {
+                    // 継続条件(else if)
+                    writer.writeStartElement("case")
+                    writer.writeAttribute("condition", e.condition.toString())
+
+                    // コメント
+                    e.comment.ifPresent { it.accept(this, arg) }
+                    // 本文
+                    e.thenStmt.accept(this, arg)
+
+                    writer.writeEndElement()
+
+                    // 継続条件(再帰呼び出し)
+                    visitInElse(e.elseStmt, arg)
+                }
+                else {
+                    // 条件なし(else)
+                    writer.writeStartElement("case")
+
+                    // コメント
+                    e.comment.ifPresent { it.accept(this, arg) }
+                    // 本文
+                    e.accept(this, arg)
+
+                    writer.writeEndElement()
+                }
+            }
+        }
+
+        /**
+         * for eachステートメント.
+         */
+        override fun visit(n: ForEachStmt?, arg: Void?) {
+
+            writer.writeStartElement("for-each")
+
+            // イテレータ
+            // TODO: なんか違う気がする
+            writer.writeStartElement("iterator")
+            writer.writeAttribute("expression", n!!.iterable.toString())
+
+            // 変数
+            writer.writeStartElement("variable")
+            writer.writeAttribute("expression", n.variable.toString())
+
+            // コメント
+            n.comment.ifPresent { it.accept(this, arg) }
+
+            // 処理本体
+            n.body.accept(this, arg)
+
+            writer.writeEndElement()
+            super.visit(n, arg)
         }
 
     }
