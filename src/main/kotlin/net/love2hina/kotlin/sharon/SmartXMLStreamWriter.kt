@@ -165,6 +165,18 @@ internal class SmartXMLStreamWriter(file: File): XMLStreamWriter, Closeable {
         xmlWriter.writeCharacters(text, start, len)
     }
 
+    private val regexLineSeparator = Regex("(\r\n|\r|\n)")
+
+    fun writeStrings(text: String?) {
+        val lines = text?.trim()?.split(regexLineSeparator) ?: ArrayList()
+
+        lines.stream()
+            .forEach{
+                outputElementBody()
+                xmlWriter.writeCharacters(it.trim())
+            }
+    }
+
     override fun setDefaultNamespace(uri: String?) {
         xmlWriter.setDefaultNamespace(uri)
     }

@@ -14,17 +14,16 @@ import java.nio.file.Path;
  * @author webmaster@love2hina.net
  * @version 1.0.0
  */
-public class ParseTestTarget {
+public class ParseTestTarget extends Object implements java.io.Serializable {
 
     /** フィールド */
-    private int fieldInt = 0;
+    private int fieldInt = 0, fieldInt2 = 2;
 
     public enum MyEnum {
 
     }
 
-
-    public @interface MyAnnotation {
+    protected @interface MyAnnotation {
 
     }
 
@@ -33,7 +32,8 @@ public class ParseTestTarget {
      *
      * @return リターンコード
      */
-    public int method() {
+    @MyAnnotation
+    public int method(String name) {
         System.out.println("Hello, world!");
 
         final Path path = Path.of("file://localhost");
