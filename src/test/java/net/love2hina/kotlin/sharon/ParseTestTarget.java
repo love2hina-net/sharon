@@ -38,6 +38,31 @@ public class ParseTestTarget extends Object implements java.io.Serializable {
 
         final Path path = Path.of("file://localhost");
 
+        /** if */
+        if (true) {
+
+        }
+        /** else if */
+        else if (false) {
+
+        }
+        /** else */
+        else {
+
+        }
+
+        String str = "";
+
+        switch (str) {
+            // 文字列
+            case "":
+            case "ABC":
+                break;
+            // その他
+            default:
+                throw new RuntimeException();
+        }
+
         return 0;
     }
 

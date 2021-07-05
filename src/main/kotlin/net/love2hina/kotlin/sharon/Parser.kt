@@ -46,35 +46,45 @@ internal class Parser(val file: File) {
          * つまりファイル
          */
         override fun visit(n: CompilationUnit?, arg: Void?) {
+            n!!
+
             writer.writeStartElement("file")
             writer.writeAttribute("language", "java")
             writer.writeAttribute("src", this@Parser.file.canonicalPath)
 
-            super.visit(n, arg)
+            // モジュール
+            n.module.ifPresent { it.accept(this, arg) }
+            // パッケージ宣言
+            n.packageDeclaration.ifPresent { it.accept(this, arg) }
+            // インポート
+            n.imports.forEach { it.accept(this, arg) }
+            // 型宣言
+            n.types.forEach { it.accept(this, arg) }
+
             writer.writeEndElement()
         }
 
         override fun visit(n: JavadocComment?, arg: Void?) {
-            writer.writeStartElement("comment")
-            writer.writeStrings(n!!.content)
+            n!!
 
-            super.visit(n, arg)
+            writer.writeStartElement("comment")
+            writer.writeStrings(n.content)
             writer.writeEndElement()
         }
 
         override fun visit(n: BlockComment?, arg: Void?) {
-            writer.writeStartElement("comment")
-            writer.writeStrings(n!!.content)
+            n!!
 
-            super.visit(n, arg)
+            writer.writeStartElement("comment")
+            writer.writeStrings(n.content)
             writer.writeEndElement()
         }
 
         override fun visit(n: LineComment?, arg: Void?) {
-            writer.writeStartElement("comment")
-            writer.writeStrings(n!!.content)
+            n!!
 
-            super.visit(n, arg)
+            writer.writeStartElement("comment")
+            writer.writeStrings(n.content)
             writer.writeEndElement()
         }
 
@@ -84,8 +94,10 @@ internal class Parser(val file: File) {
          * `import package_name;`
          */
         override fun visit(n: ImportDeclaration?, arg: Void?) {
+            n!!
+
             writer.writeEmptyElement("import")
-            writer.writeAttribute("package", n!!.name.asString())
+            writer.writeAttribute("package", n.name.asString())
         }
 
         /**
@@ -209,20 +221,27 @@ internal class Parser(val file: File) {
             writer.writeAttribute("name", name)
             writer.writeAttribute("fullname", packageStack.getFullName(name))
 
-            // 継承クラスの出力
+            packageStack.push(name)
+
+            // コメント
+            n.comment.ifPresent { it.accept(this, arg) }
+            // アノテーション
+            n.annotations.forEach { it.accept(this, arg) }
+            // 型パラメータ
+            n.typeParameters.forEach { it.accept(this, arg) }
+            // 継承クラス
             n.extendedTypes.forEach{
                 writer.writeEmptyElement("extends")
                 writer.writeAttribute("name", it.name.asString())
             }
-
-            // インターフェースの出力
+            // インターフェース
             n.implementedTypes.forEach {
                 writer.writeEmptyElement("implements")
                 writer.writeAttribute("name", it.name.asString())
             }
+            // メンバー
+            n.members.forEach { it.accept(this, arg) }
 
-            packageStack.push(name)
-            super.visit(n, arg)
             packageStack.pop()
             writer.writeEndElement()
         }
@@ -283,10 +302,10 @@ internal class Parser(val file: File) {
                 writer.writeAttribute("name", it.name.asString())
                 it.initializer.ifPresent{ value -> writer.writeAttribute("value", value.toString()) }
 
-                // アノテーションを処理する
-                n.annotations.forEach{ a -> a.accept(this, arg) }
                 // コメントを処理する
                 n.comment.ifPresent{ c -> c.accept(this, arg) }
+                // アノテーションを処理する
+                n.annotations.forEach{ a -> a.accept(this, arg) }
 
                 writer.writeEndElement()
             }
@@ -304,11 +323,17 @@ internal class Parser(val file: File) {
          * 関数定義.
          */
         override fun visit(n: MethodDeclaration?, arg: Void?) {
+            n!!
 
             writer.writeStartElement("method")
-            writer.writeAttribute("modifier", getModifier(n!!.modifiers))
+            writer.writeAttribute("modifier", getModifier(n.modifiers))
             writer.writeAttribute("return", n.type.asString())
             writer.writeAttribute("name", n.name.asString())
+
+            // コメント
+            n.comment.ifPresent { it.accept(this, arg) }
+            // アノテーション
+            n.annotations.forEach { it.accept(this, arg) }
 
             // パラメータ
             // 明示的なthisパラメータ
@@ -318,10 +343,6 @@ internal class Parser(val file: File) {
 
             // throws
             n.thrownExceptions.forEach { it.accept(this, arg) }
-            // アノテーション
-            n.annotations.forEach { it.accept(this, arg) }
-            // コメント
-            n.comment.ifPresent { it.accept(this, arg) }
 
             // ステートメント
             n.body.ifPresent { it.accept(this, arg) }
@@ -333,15 +354,14 @@ internal class Parser(val file: File) {
          * 明示的なthisパラメータ.
          */
         override fun visit(n: ReceiverParameter?, arg: Void?) {
+            n!!
 
             writer.writeStartElement("parameter")
-            writer.writeAttribute("type", n!!.type.asString())
+            writer.writeAttribute("type", n.type.asString())
             writer.writeAttribute("name", n.name.asString())
 
             // アノテーション
             n.annotations.forEach { it.accept(this, arg) }
-            // コメント
-            n.comment.ifPresent { it.accept(this, arg) }
 
             writer.writeEndElement()
         }
@@ -350,17 +370,16 @@ internal class Parser(val file: File) {
          * パラメータ.
          */
         override fun visit(n: Parameter?, arg: Void?) {
+            n!!
 
             writer.writeStartElement("parameter")
-            writer.writeAttribute("modifier", getModifier(n!!.modifiers))
+            writer.writeAttribute("modifier", getModifier(n.modifiers))
             writer.writeAttribute("type", n.type.asString())
             writer.writeAttribute("name", n.name.asString())
 
             // アノテーション
             n.varArgsAnnotations.forEach { it.accept(this, arg) }
             n.annotations.forEach { it.accept(this, arg) }
-            // コメント
-            n.comment.ifPresent { it.accept(this, arg) }
 
             writer.writeEndElement()
         }
@@ -374,7 +393,6 @@ internal class Parser(val file: File) {
             writer.writeStartElement("block")
 
             n.statements.forEach { it.accept(this, arg) }
-            n.comment.ifPresent { it.accept(this, arg) }
 
             writer.writeEndElement()
         }
@@ -391,7 +409,9 @@ internal class Parser(val file: File) {
 
             // 第1条件
             writer.writeStartElement("case")
-            writer.writeAttribute("condition", n.condition.toString())
+            writer.writeStartElement("expr")
+            writer.writeStrings(n.condition.toString())
+            writer.writeEndElement()
 
             // コメント
             n.comment.ifPresent { it.accept(this, arg) }
@@ -415,7 +435,9 @@ internal class Parser(val file: File) {
                 if (e is IfStmt) {
                     // 継続条件(else if)
                     writer.writeStartElement("case")
-                    writer.writeAttribute("condition", e.condition.toString())
+                    writer.writeStartElement("expr")
+                    writer.writeStrings(e.condition.toString())
+                    writer.writeEndElement()
 
                     // コメント
                     e.comment.ifPresent { it.accept(this, arg) }
@@ -439,6 +461,48 @@ internal class Parser(val file: File) {
                     writer.writeEndElement()
                 }
             }
+        }
+
+        /**
+         * switchステートメント.
+         */
+        override fun visit(n: SwitchStmt?, arg: Void?) {
+            n!!
+
+            // 条件分岐の出力
+            writer.writeStartElement("condition")
+            writer.writeAttribute("type", "switch")
+            writer.writeAttribute("selector", n.selector.toString())
+
+            // コメント
+            n.comment.ifPresent { it.accept(this, arg) }
+            // 条件エントリ
+            n.entries.forEach { it.accept(this, arg) }
+
+            writer.writeEndElement()
+        }
+
+        /**
+         * caseステートメント.
+         */
+        override fun visit(n: SwitchEntry?, arg: Void?) {
+            n!!
+
+            // 継続条件(else if)
+            writer.writeStartElement("case")
+            // 条件
+            n.labels.forEach {
+                writer.writeStartElement("expr")
+                writer.writeStrings(it.toString())
+                writer.writeEndElement()
+            }
+
+            // コメント
+            n.comment.ifPresent { it.accept(this, arg) }
+            // 本文
+            n.statements.forEach { it.accept(this, arg) }
+
+            writer.writeEndElement()
         }
 
         /**
