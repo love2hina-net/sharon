@@ -170,11 +170,21 @@ internal class SmartXMLStreamWriter(file: File): XMLStreamWriter, Closeable {
     fun writeStrings(text: String?) {
         val lines = text?.trim()?.split(regexLineSeparator) ?: ArrayList()
 
-        lines.stream()
-            .forEach{
-                outputElementBody()
-                xmlWriter.writeCharacters(it.trim())
+        when (lines.size) {
+            0 -> {}
+            1 -> {
+                // 単一行出力
+                xmlWriter.writeCharacters(lines[0])
             }
+            else -> {
+                // 複数行出力
+                lines.stream()
+                    .forEach{
+                        outputElementBody()
+                        xmlWriter.writeCharacters(it.trim())
+                    }
+            }
+        }
     }
 
     override fun setDefaultNamespace(uri: String?) {
