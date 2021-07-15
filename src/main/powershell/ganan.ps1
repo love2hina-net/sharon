@@ -28,7 +28,7 @@ $global:config = @{}
 # 対象となる行数
 $global:config.searchLines = 128
 # 対象となる列数
-$global:config.searchRows = 32
+$global:config.searchColumns = 64
 
 $global:const = @{}
 # xlWorksheet定数
@@ -181,9 +181,9 @@ class GananApplication {
         $lines = $templateEnd - $templateCursor.Value
 
         if ($lines -ge 1) {
-            $range = $sheetDocument.Range(
+            $rangeLine = $sheetDocument.Range(
                 $sheetDocument.Cells($documentCursor.Value + 1, 1),
-                $sheetDocument.Cells($documentCursor.Value + $lines, $global:config.searchRows))
+                $sheetDocument.Cells($documentCursor.Value + $lines, 1))
 
             $regex = [System.Text.RegularExpressions.Regex]'\{\$(\w+)\}'
             [System.Text.RegularExpressions.MatchEvaluator]$replacer = {
@@ -193,14 +193,19 @@ class GananApplication {
             }
 
             # 置き換え処理
-            foreach ($cell in $range) {
-                $text = $cell.Text
-                if ($text -ne '') {
+            # 行のループ
+            foreach ($cell in $rangeLine) {
+                # 列のループ
+                do {
+                    $text = $cell.Text
                     $replaced = $regex.Replace($text, $replacer)
                     if ($text -ne $replaced) {
                         $cell.Value = $replaced
                     }
-                }
+
+                    # Ctrl + → と同等の処理で列挙高速化
+                    $cell = $cell.End(-4161)
+                } while ($cell.Column -le $global:config.searchColumns)
             }
 
             # 出力行数
