@@ -1,6 +1,9 @@
 {
     "[powershell]": {
         "files.encoding": "utf8bom",
-        "files.autoGuessEncoding": true
+        "files.autoGuessEncoding": true,
+        "files.trimTrailingWhitespace": true,
+        "editor.renderControlCharacters": true,
+        "editor.renderWhitespace": "all"
     }
 }

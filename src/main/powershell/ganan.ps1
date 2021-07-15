@@ -20,12 +20,15 @@
     WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #>
 using module "./TargetEnumerator.psm1"
+
 [CmdletBinding()]
 param()
 
 $global:config = @{}
 # 対象となる行数
-$global:config.searchLines = 1028
+$global:config.searchLines = 128
+# 対象となる列数
+$global:config.searchRows = 32
 
 $global:const = @{}
 # xlWorksheet定数
@@ -133,7 +136,7 @@ class GananApplication {
         foreach ($entry in $entries) {
             # データ投影
             $targetCursor = $null
-    
+
             switch ($entry.type) {
                 'once' {
                     # なし
@@ -148,40 +151,58 @@ class GananApplication {
                     $targetCursor = [ClassTargetEnumerator]::new($this.xpath.Select('//class'))
                 }
             }
-    
-    
-            $sheetTemplate = $this.bookTemplate.WorkSheets.Item($entry.name)
-            [void]$sheetTemplate.Copy([System.Reflection.Missing]::Value, $this.bookDocument.WorkSheets.Item($this.bookDocument.WorkSheets.Count))
-            $sheetDocument = $this.bookDocument.WorkSheets.Item($this.bookDocument.WorkSheets.Count)
-            $lineTemplate = 0 # テンプレート側で出力した行位置
-            $lineDocument = 0 # 生成ドキュメント側で出力した行位置
-    
-            foreach ($control in $entry.controls) {
-                # 制御文までを出力
-                $this.translateLines($sheetTemplate, ([ref]$lineTemplate), ($control.row - 1), $sheetDocument, ([ref]$lineDocument))
-    
-                # 生成ドキュメント側制御文削除
-                [void]$sheetDocument.Rows("$($lineDocument + 1)").Delete()
-    
-                # テンプレート側行位置制御
-                $lineTemplate = $control.row
+
+            foreach ($target in $targetCursor) {
+                $sheetTemplate = $this.bookTemplate.WorkSheets.Item($entry.name)
+                [void]$sheetTemplate.Copy([System.Reflection.Missing]::Value, $this.bookDocument.WorkSheets.Item($this.bookDocument.WorkSheets.Count))
+                $sheetDocument = $this.bookDocument.WorkSheets.Item($this.bookDocument.WorkSheets.Count)
+                $lineTemplate = 0 # テンプレート側で出力した行位置
+                $lineDocument = 0 # 生成ドキュメント側で出力した行位置
+
+                foreach ($control in $entry.controls) {
+                    # 制御文までを出力
+                    $this.translateLines(([ref]$lineTemplate), ($control.row - 1), $sheetDocument, ([ref]$lineDocument), $target)
+
+                    # 生成ドキュメント側制御文削除
+                    [void]$sheetDocument.Rows("$($lineDocument + 1)").Delete()
+
+                    # テンプレート側行位置制御
+                    $lineTemplate = $control.row
+                }
+
+                # 残りを出力
+                $this.translateLines(([ref]$lineTemplate), $global:config.searchLines, $sheetDocument, ([ref]$lineDocument), $target)
             }
-    
-            # 残りを出力
-            $this.translateLines($sheetTemplate, ([ref]$lineTemplate), $global:config.searchLines, $sheetDocument, ([ref]$lineDocument))
         }
     }
 
-    [void] translateLines($sheetTemplate, [ref]$templateCursor, $templateEnd, $sheetDocument, [ref]$documentCursor) {
+    [void] translateLines([ref]$templateCursor, $templateEnd, $sheetDocument, [ref]$documentCursor, $target) {
 
         $lines = $templateEnd - $templateCursor.Value
-    
+
         if ($lines -ge 1) {
-            $rangeFrom = $sheetTemplate.Rows("$($templateCursor.Value + 1):$templateEnd")
-            $rangeTo = $sheetDocument.Range("A$($documentCursor.Value + 1)")
-    
-            # TODO: 置き換え処理
-    
+            $range = $sheetDocument.Range(
+                $sheetDocument.Cells($documentCursor.Value + 1, 1),
+                $sheetDocument.Cells($documentCursor.Value + $lines, $global:config.searchRows))
+
+            $regex = [System.Text.RegularExpressions.Regex]'\{\$(\w+)\}'
+            [System.Text.RegularExpressions.MatchEvaluator]$replacer = {
+                param([System.Text.RegularExpressions.Match]$match)
+                # 置き換え
+                return (Invoke-Expression ('$target.' + "$($match.Groups[1])"))
+            }
+
+            # 置き換え処理
+            foreach ($cell in $range) {
+                $text = $cell.Text
+                if ($text -ne '') {
+                    $replaced = $regex.Replace($text, $replacer)
+                    if ($text -ne $replaced) {
+                        $cell.Value = $replaced
+                    }
+                }
+            }
+
             # 出力行数
             $templateCursor.Value += $lines
             $documentCursor.Value += $lines

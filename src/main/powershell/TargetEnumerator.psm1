@@ -1,4 +1,6 @@
-﻿using namespace System.Xml.XPath
+﻿using module "./TargetInfo.psm1"
+
+using namespace System.Xml.XPath
 
 class TargetEnumerator : System.Collections.IEnumerable, System.Collections.IEnumerator {
 
@@ -29,8 +31,14 @@ class ClassTargetEnumerator : TargetEnumerator {
     }
 
     [bool] MoveNext() {
-        Write-Verbose "Call Move-Next 2"
-        return $false
+        $available = $this._query.MoveNext()
+        if ($available) {
+            $this._current = [ClassTargetInfo]::new($this._query.Current)
+        }
+        else {
+            $this._current = $null
+        }
+        return $available
     }
 
 }
