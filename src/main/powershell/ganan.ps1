@@ -20,6 +20,7 @@
     WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #>
 using module "./TargetEnumerator.psm1"
+using module "./ControlStatement.psm1"
 
 [CmdletBinding()]
 param()
@@ -65,32 +66,49 @@ class GananApplication {
     }
 
     [void] parseTemplate() {
-        Write-Verbose "[parseTemplate] begin template parsing..."
+        Write-Debug "[parseTemplate] begin template parsing..."
 
-        $parSheetFmt = $null # 親シート
+        [SheetFormat] $parSheetFmt = $null # 親シート
 
         foreach ($sheet in $this.bookTemplate.WorkSheets) {
             if ($sheet.Type -eq $global:const.xlWorksheet) {
                 # 通常のシートの場合
-                $curSheetFmt = @{ name = $sheet.Name; entries = @(); controls = @() }
-                Write-Output "[parseTemplate] parsing sheet: $($curSheetFmt.name)"
+                $curSheetFmt = [SheetFormat]::new($sheet.Name)
+                Write-Debug "[parseTemplate] parsing sheet: $($curSheetFmt.name)"
+
+                # 制御文スタック
+                $stackControl = (New-Object -TypeName 'System.Collections.Generic.Stack[ControlHolder]')
+                $stackControl.Push($curSheetFmt)
 
                 # A列のセルを走査
                 foreach ($cell in $sheet.Range("A1:A$($global:config.searchLines)").Cells) {
                     if ($cell.Text -match '\{#(\w+)(?:\s+(\S+))*\}') {
+                        Write-Verbose "[parseTemplate] found control statement: $($Matches[0])"
+
                         # 制御文
-                        $control = @{ cmd = $Matches[1]; row = $cell.Row }
-                        switch ($control.cmd) {
-                            'sheet'
-                            {
-                                $control.type = $Matches[2]
+                        $control = $null
+                        switch ($Matches[1]) {
+                            'sheet' {
+                                $control = [SheetControl]::new($Matches, $cell)
                                 # このシートの種別を記録
                                 $curSheetFmt.type = $control.type
                             }
+                            'begin' {
+                                $control = [IterationControl]::new($Matches, $cell)
+                            }
+                            'end' {
+                                $last = $stackControl.Pop()
+                                $last.Close($Matches, $cell)
+                            }
                         }
-                        $curSheetFmt.controls += $control
+                        if ($null -ne $control) {
+                            ($stackControl.Peek()).controls += $control
+                            if ($control.IsNested()) {
+                                $stackControl.Push($control)
+                            }
 
-                        Write-Verbose "[parseTemplate] found control statement: $($control.cmd), Line: $($control.row)"
+                            Write-Verbose "[parseTemplate] add control statement: $($control.command), Line: $($control.row)"
+                        }
                     }
                 }
 
@@ -120,10 +138,15 @@ class GananApplication {
                         }
                     }
                 }
+
+                # スタックチェック
+                if ($stackControl.Pop() -ne $curSheetFmt) {
+                    throw (New-Object -TypeName 'System.InvalidOperationException' -ArgumentList ('制御文が正しく閉じられていません。'))
+                }
             }
         }
 
-        Write-Verbose "[parseTemplate] end template parsing."
+        Write-Debug "[parseTemplate] end template parsing."
     }
 
     [void] makeDocument() {
