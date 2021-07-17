@@ -34,6 +34,10 @@ $global:config.searchColumns = 64
 $global:const = @{}
 # xlWorksheet定数
 $global:const.xlWorksheet = -4167
+# xlShiftDown定数
+$global:const.xlShiftDown = -4121
+# xlToRight定数
+$global:const.xlToRight = -4161
 
 class GananApplication {
     # テンプレートフォーマット情報
@@ -186,11 +190,14 @@ class GananApplication {
                     # 制御文までを出力
                     $this.translateLines(([ref]$lineTemplate), ($control.row - 1), $sheetDocument, ([ref]$lineDocument), $target)
 
+                    # 制御文出力処理
+                    $control.Output(([ref]$lineTemplate), $sheetDocument, ([ref]$lineDocument), $target)
+
                     # 生成ドキュメント側制御文削除
-                    [void]$sheetDocument.Rows("$($lineDocument + 1)").Delete()
+                    [void]$sheetDocument.Rows("$($lineDocument + 1):$($lineDocument + $control.length)").Delete()
 
                     # テンプレート側行位置制御
-                    $lineTemplate = $control.row
+                    $lineTemplate = $control.row + $control.length - 1
                 }
 
                 # 残りを出力
@@ -227,7 +234,7 @@ class GananApplication {
                     }
 
                     # Ctrl + → と同等の処理で列挙高速化
-                    $cell = $cell.End(-4161)
+                    $cell = $cell.End($global:const.xlToRight)
                 } while ($cell.Column -le $global:config.searchColumns)
             }
 
