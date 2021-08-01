@@ -34,19 +34,28 @@ public class ParseTestTarget extends Object implements java.io.Serializable {
      */
     @MyAnnotation
     public int method(String name) {
+        /// # 出力
         System.out.println("Hello, world!");
 
+        /// # パスの設定
         final Path path = Path.of("file://localhost");
 
-        /** if */
+        /// # なにか
+        /// 記述文
+
+        /*/
+         * ブロックコメント
+         */
+
+        /// if
         if (true) {
 
         }
-        /** else if */
+        /// else if
         else if (false) {
 
         }
-        /** else */
+        /// else
         else {
 
         }
@@ -54,11 +63,11 @@ public class ParseTestTarget extends Object implements java.io.Serializable {
         String str = "";
 
         switch (str) {
-            // 文字列
+            /// 文字列
             case "":
             case "ABC":
                 break;
-            // その他
+            /// その他
             default:
                 throw new RuntimeException();
         }
