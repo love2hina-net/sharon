@@ -1,6 +1,6 @@
 plugins {
     id 'java'
-    id 'org.jetbrains.kotlin.jvm' version '1.5.10'
+    id 'org.jetbrains.kotlin.jvm' version '1.5.21'
 }
 
 group 'net.love2hina'
@@ -19,13 +19,16 @@ repositories {
 }
 
 dependencies {
+    // Kotlin
+    implementation 'org.jetbrains.kotlin:kotlin-stdlib-jdk8'
+
     // Java Parser
     implementation 'com.github.javaparser:javaparser-core:3.22.1'
 
     // テスト
-    implementation "org.jetbrains.kotlin:kotlin-stdlib"
-    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.7.0'
-    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.7.0'
+    def junit_version = '5.7.2'
+    testImplementation "org.junit.jupiter:junit-jupiter-api:$junit_version"
+    testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:$junit_version"
 }
 
 test {

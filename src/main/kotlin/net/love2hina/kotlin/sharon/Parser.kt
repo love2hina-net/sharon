@@ -86,9 +86,14 @@ internal class Parser(val file: File) {
         override fun visit(n: LineComment?, arg: Void?) {
             n!!
 
-            writer.writeStartElement("comment")
-            writer.writeStrings(n.content)
-            writer.writeEndElement()
+            val regex = Regex("^/\\s*(?<content>.*)\\s*$")
+            val match = regex.find(n.content)
+
+            if (match != null) {
+                writer.writeStartElement("comment")
+                writer.writeStrings((match.groups as MatchNamedGroupCollection)["content"]!!.value)
+                writer.writeEndElement()
+            }
         }
 
         /**
