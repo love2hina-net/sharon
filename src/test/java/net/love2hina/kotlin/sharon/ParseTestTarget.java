@@ -45,6 +45,9 @@ public class ParseTestTarget extends Object implements java.io.Serializable {
 
         /*/
          * ブロックコメント
+         *
+         * あいう
+         * かきく
          */
 
         /// if

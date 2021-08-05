@@ -78,15 +78,29 @@ internal class Parser(val file: File) {
         override fun visit(n: BlockComment?, arg: Void?) {
             n!!
 
-            writer.writeStartElement("comment")
-            writer.writeStrings(n.content)
-            writer.writeEndElement()
+            val regex = Regex("^\\s*(?:[/*])\\s*(?<content>\\S|\\S.*\\S)?\\s*$")
+
+            if (n.content.startsWith('/')) {
+                val lines = n.content.split(Regex("\r\n|\r|\n"))
+                    .stream().map {
+                        val m = regex.find(it)
+                        (m?.groups as MatchNamedGroupCollection?)?.get("content")?.value ?: ""
+                    }.reduce(
+                        StringBuilder(),
+                        { b, s -> (if (b.isEmpty()) b else b.append("\r\n")).append(s) },
+                        { b1, b2 -> (if (b1.isEmpty()) b1 else b1.append("\r\n")).append(b2) }
+                    )
+
+                writer.writeStartElement("comment")
+                writer.writeStrings(lines.toString())
+                writer.writeEndElement()
+            }
         }
 
         override fun visit(n: LineComment?, arg: Void?) {
             n!!
 
-            val regex = Regex("^/\\s*(?<content>.*)\\s*$")
+            val regex = Regex("^/\\s*(?<content>\\S|\\S.*\\S)?\\s*$")
             val match = regex.find(n.content)
 
             if (match != null) {
@@ -465,11 +479,7 @@ internal class Parser(val file: File) {
                 .sorted { x, y -> compare(
                     x.range.orElse(rangeUnknown).begin.line,
                     y.range.orElse(rangeUnknown).begin.line)
-                }.forEach {
-                   it.range.ifPresent { r -> r.begin.line }
-                    println("->" + it.javaClass.name)
-                    it.accept(this, arg)
-                }
+                }.forEach { it.accept(this, arg) }
 
             writer.writeEndElement()
         }
