@@ -1,11 +1,11 @@
 ﻿<#
 .SYNOPSIS
-    Excel コードドキュメントジェネレーター
+    Excel コードドキュメントジェネレーター(Ganan)
 .DESCRIPTION
     コードパーサー(Sharon)で解析したXMLを指定されたExcelテンプレートに展開し、
     コードドキュメントを生成します。
 .NOTES
-    Code released under the MIT Lincense.
+    This project was released under the MIT Lincense.
 
     Copyright 2021 webmaster@love2hina.net
 
@@ -48,8 +48,9 @@ class GananApplication {
     $bookTemplate
     # 生成ドキュメントワークブック
     $bookDocument
-    #
+    # XMLドキュメント
     [System.Xml.XmlDocument] $xml
+    # XPath
     [System.Xml.XPath.XPathNavigator] $xpath
 
     [void] test() {
@@ -98,7 +99,15 @@ class GananApplication {
                                 $curSheetFmt.type = $control.type
                             }
                             'begin' {
-                                $control = [IterationControl]::new($Matches, $cell)
+                                # 第2パラメーターによって分岐
+                                switch ($Matches[2]) {
+                                    'codes' {
+                                        $control = [CodesControl]::new($Matches, $cell)
+                                    }
+                                    default {
+                                        $control = [IterationControl]::new($Matches, $cell)
+                                    }
+                                }
                             }
                             'end' {
                                 $last = $stackControl.Pop()
@@ -175,7 +184,11 @@ class GananApplication {
                 }
                 'class' {
                     # クラス情報
-                    $targetCursor = [ClassTargetEnumerator]::new($this.xpath.Select('//class'))
+                    $targetCursor = [ClassTargetEnumerator]::new($this.xpath)
+                }
+                'mathod' {
+                    # メソッド
+                    $targetCursor = [MethodTargetEnumerator]::new($this.xpath)
                 }
             }
 
@@ -202,6 +215,9 @@ class GananApplication {
 
                 # 残りを出力
                 $this.translateLines(([ref]$lineTemplate), $global:config.searchLines, $sheetDocument, ([ref]$lineDocument), $target)
+
+                # 子シートの出力
+                # $this.enumEntries($target.entries)
             }
         }
     }

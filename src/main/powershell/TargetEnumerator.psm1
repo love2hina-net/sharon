@@ -4,8 +4,36 @@ using namespace System.Xml.XPath
 
 class TargetEnumerator : System.Collections.IEnumerable, System.Collections.IEnumerator {
 
+    # クエリ結果
+    hidden [XPathNodeIterator] $_query
+    # 現在のノード
     hidden [object] $_current
-    
+
+    TargetEnumerator() {
+        $this._query = $null
+    }
+
+    TargetEnumerator([object]$parent, [string]$tag) {
+        $info = $parent -as [TargetInfo]
+        $xpath = $parent -as [XPathNavigator]
+
+        if ($null -ne $xpath) {
+            # ルート
+            $this._query = $xpath.Evaluate("//$tag")
+        }
+        elseif ($null -ne $info) {
+            # 子要素
+            $this._query = $info.node.Evaluate($tag)
+        }
+        else {
+            throw (New-Object -TypeName 'System.ArgumentException' -ArgumentList ("検索起点が不明です。"))
+        }
+    }
+
+    [TargetInfo] CreateInfo([XPathNavigator]$node) {
+        return $null
+    }
+
     [System.Collections.IEnumerator] GetEnumerator() {
         return $this
     }
@@ -15,7 +43,13 @@ class TargetEnumerator : System.Collections.IEnumerable, System.Collections.IEnu
     }
 
     [bool] MoveNext() {
-        return $false
+        $available = if ($null -ne $this._query) { $this._query.MoveNext() }
+        else { $false }
+
+        $this._current = if ($available) { $this.CreateInfo($this._query.Current) }
+        else { $null }
+
+        return $available
     }
 
     [void] Reset() {}
@@ -24,21 +58,20 @@ class TargetEnumerator : System.Collections.IEnumerable, System.Collections.IEnu
 
 class ClassTargetEnumerator : TargetEnumerator {
 
-    hidden [XPathNodeIterator] $_query
+    ClassTargetEnumerator([object]$parent) : base($parent, 'class') {}
 
-    ClassTargetEnumerator([XPathNodeIterator]$query) {
-        $this._query = $query
+    [TargetInfo] CreateInfo([XPathNavigator]$node) {
+        return [ClassTargetInfo]::new($node)
     }
 
-    [bool] MoveNext() {
-        $available = $this._query.MoveNext()
-        if ($available) {
-            $this._current = [ClassTargetInfo]::new($this._query.Current)
-        }
-        else {
-            $this._current = $null
-        }
-        return $available
+}
+
+class MethodTargetEnumerator : TargetEnumerator {
+
+    MethodTargetEnumerator([object]$parent) : base($parent, 'method') {}
+
+    [TargetInfo] CreateInfo([XPathNavigator]$node) {
+        return [MethodTargetInfo]::new($node)
     }
 
 }

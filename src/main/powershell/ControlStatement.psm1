@@ -66,6 +66,31 @@ class SheetControl : ControlStatement {
 
 }
 
+# コード制御文
+class CodesControl : ControlStatement {
+
+    # 対象
+    [string] $type
+
+    CodesControl($match, $cell) : base($match, $cell) {
+        $this.type = $match[2]
+    }
+
+    [bool] IsNested() {
+        return $true
+    }
+
+    [void] Close($match, $cell) {
+        if ($match[2] -ne $this.type) {
+            throw (New-Object -TypeName 'System.InvalidOperationException' `
+                -ArgumentList ("制御文の組み合わせが正しくありません。指定: $($match[2]), 想定: $($this.type)"))
+        }
+
+        $this.length = $cell.Row - $this.row + 1
+    }
+
+}
+
 # 繰り返し制御文
 class IterationControl : ControlStatement {
 

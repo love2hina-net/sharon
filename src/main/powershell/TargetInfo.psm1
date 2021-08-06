@@ -1,6 +1,17 @@
 ﻿using namespace System.Xml.XPath
 
-class ClassTargetInfo {
+class TargetInfo {
+
+    # ノード
+    [XPathNavigator] $node
+
+    TargetInfo([XPathNavigator]$node) {
+        $this.node = $node
+    }
+
+}
+
+class ClassTargetInfo : TargetInfo {
 
     # コメント
     [string] $comment
@@ -14,7 +25,10 @@ class ClassTargetInfo {
     # フィールド
     [FieldTargetInfo[]] $fields
 
-    ClassTargetInfo([XPathNavigator]$node) {
+    # メソッド
+    [MethodTargetInfo[]] $methods
+
+    ClassTargetInfo([XPathNavigator]$node) : base($node) {
 
         $this.comment = $node.Evaluate('comment/text()')
         $this.modifier = $node.Evaluate('@modifier')
@@ -25,11 +39,16 @@ class ClassTargetInfo {
         foreach ($i in $node.Evaluate('field')) {
             $this.fields += [FieldTargetInfo]::new($i)
         }
+
+        $this.methods = @()
+        foreach ($i in $node.Evaluate('method')) {
+            $this.methods += [MethodTargetInfo]::new($i)
+        }
     }
 
 }
 
-class FieldTargetInfo {
+class FieldTargetInfo : TargetInfo {
 
     # コメント
     [string] $comment
@@ -42,13 +61,34 @@ class FieldTargetInfo {
     # 初期値
     [string] $value
 
-    FieldTargetInfo([XPathNavigator]$node) {
+    FieldTargetInfo([XPathNavigator]$node) : base($node) {
 
         $this.comment = $node.Evaluate('comment/text()')
         $this.modifier = $node.Evaluate('@modifier')
         $this.type = $node.Evaluate('@type')
         $this.name = $node.Evaluate('@name')
         $this.value = $node.Evaluate('@value')
+    }
+
+}
+
+class MethodTargetInfo : TargetInfo {
+
+    # コメント
+    [string] $comment
+    # 修飾子
+    [string] $modifier
+    # 戻り値型
+    [string] $return
+    # 名前
+    [string] $name
+
+    MethodTargetInfo([XPathNavigator]$node) : base($node) {
+
+        $this.comment = $node.Evaluate('comment/text()')
+        $this.modifier = $node.Evaluate('@modifier')
+        $this.return = $node.Evaluate('@return')
+        $this.name = $node.Evaluate('@name')
     }
 
 }

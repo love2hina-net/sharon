@@ -7,17 +7,35 @@
     抽出した情報は独自形式のXMLとして出力し、Gananの入力情報となります。
 2. ganan.ps1 (PowerShell)
     - ExcelのテンプレートファイルとSharonの出力したXMLを読み込み、
-    情報を埋め込み、Excelコードドキュメントを生成します。
+    情報を埋め込んでExcelコードドキュメントを生成します。
 
 特に整形を担うgananはスクリプトファイルとなっています。
-これはテンプレートカスタマイズだけでは意図したフォーマットを実現できない場合などでも、
+テンプレートカスタマイズだけでは意図したフォーマットを実現できない場合などでも、
 整形処理がスクリプトであることで、整形処理自体を直接カスタマイズすることが容易となっています。
+
+### License
+This project was released under the MIT Lincense.
+
+```
+Copyright 2021 webmaster@love2hina.net
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"),
+to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense,
+and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+```
 
 ## 記載ルール
 
 ### Javaソースコード
 パラメーターや外部インターフェース仕様については、Javadoc(`/***/`)を認識します。
-処理部については、3重スラッシュ(`///`)を用います。
+処理部については、行コメントについては3重スラッシュ(`///`)を用います。
+ブロックコメントは(`/*/`)で開始します。
 
 処理部の記述で特別な意味を持つものは、以下の通りです。
 - \#(シャープ)
