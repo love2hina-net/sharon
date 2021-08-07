@@ -19,6 +19,7 @@
     FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
     WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #>
+using module "./TargetInfo.psm1"
 using module "./TargetEnumerator.psm1"
 using module "./ControlStatement.psm1"
 
@@ -164,10 +165,15 @@ class GananApplication {
 
     [void] makeDocument() {
 
-        $this.enumEntries($this.format.entries)
+        $this.enumEntries($null, $this.format.entries)
     }
 
-    [void] enumEntries($entries) {
+    [void] enumEntries($parent, $entries) {
+
+        if ($null -eq $parent) {
+            # ルートを親要素とする
+            $parent = $this.xpath
+        }
 
         foreach ($entry in $entries) {
             # データ投影
@@ -184,11 +190,11 @@ class GananApplication {
                 }
                 'class' {
                     # クラス情報
-                    $targetCursor = [ClassTargetEnumerator]::new($this.xpath)
+                    $targetCursor = [ClassTargetEnumerator]::new($parent)
                 }
-                'mathod' {
+                'method' {
                     # メソッド
-                    $targetCursor = [MethodTargetEnumerator]::new($this.xpath)
+                    $targetCursor = [MethodTargetEnumerator]::new($parent)
                 }
             }
 
@@ -217,7 +223,7 @@ class GananApplication {
                 $this.translateLines(([ref]$lineTemplate), $global:config.searchLines, $sheetDocument, ([ref]$lineDocument), $target)
 
                 # 子シートの出力
-                # $this.enumEntries($target.entries)
+                $this.enumEntries($target, $entry.entries)
             }
         }
     }
