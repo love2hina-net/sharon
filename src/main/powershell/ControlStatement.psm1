@@ -5,12 +5,34 @@ class ControlHolder {
     # 内包する制御文
     [ControlHolder[]] $controls = @()
 
-    [bool] IsNested() {
-        return $false
+    # ネスト制御文種別
+    [string] $token = ''
+
+    [void] Open([string]$token) {
+        if ($this.IsNested()) {
+            throw (New-Object -TypeName 'System.InvalidOperationException' -ArgumentList ('既にOpenされている制御文に重複してOpenは実行できません。'))
+        }
+
+        $this.token = $token
     }
 
     [void] Close($match, $cell) {
-        throw (New-Object -TypeName 'System.InvalidOperationException' -ArgumentList ('ネストしない制御文に対するCloseは無効です。'))
+        if ($this.IsNested()) {
+            # クローズトークンチェック
+            if ($match[2] -ne $this.token) {
+                throw (New-Object -TypeName 'System.InvalidOperationException' `
+                    -ArgumentList ("制御文の組み合わせが正しくありません。指定: $($match[2]), 想定: $($this.token)"))
+            }
+
+            $this.token = ''
+        }
+        else {
+            throw (New-Object -TypeName 'System.InvalidOperationException' -ArgumentList ('ネストしない制御文に対するCloseは無効です。'))
+        }
+    }
+
+    [bool] IsNested() {
+        return ($this.token -ne '')
     }
 
 }
@@ -49,7 +71,16 @@ class ControlStatement : ControlHolder {
         $this.row = $cell.Row
     }
 
+    [void] Close($match, $cell) {
+        # 基底処理呼び出し
+        ([ControlHolder]$this).Close($match, $cell)
+
+        # 行数算出
+        $this.length = $cell.Row - $this.row + 1
+    }
+
     [void] Output([ref]$templateCursor, $sheetDocument, [ref]$documentCursor, $targe) {
+        # 処理なし
     }
 
 }
@@ -69,24 +100,51 @@ class SheetControl : ControlStatement {
 # コード制御文
 class CodesControl : ControlStatement {
 
-    # 対象
-    [string] $type
+    # ロジック説明制御文
+    [DescriptionControl] $descCtrl
 
     CodesControl($match, $cell) : base($match, $cell) {
-        $this.type = $match[2]
-    }
-
-    [bool] IsNested() {
-        return $true
+        $this.Open('codes')
     }
 
     [void] Close($match, $cell) {
-        if ($match[2] -ne $this.type) {
-            throw (New-Object -TypeName 'System.InvalidOperationException' `
-                -ArgumentList ("制御文の組み合わせが正しくありません。指定: $($match[2]), 想定: $($this.type)"))
-        }
+        # 基底処理呼び出し
+        ([ControlStatement]$this).Close($match, $cell)
 
-        $this.length = $cell.Row - $this.row + 1
+        # 定義の割り当て
+        foreach ($control in $this.controls) {
+            switch ($control) {
+                { $_ -is [DescriptionControl] } {
+                    $this.descCtrl = $control
+                }
+            }
+        }
+    }
+
+    [void] Output([ref]$templateCursor, $sheetDocument, [ref]$documentCursor, $target) {
+
+        $nodes = $target.node.Evaluate('block/node()')
+
+        foreach ($node in $nodes) {
+            # TODO: 登場する要素によって出力を分ける
+            switch ($node.Name) {
+                'comment' {}
+                'condition' {}
+            }
+        }
+    }
+
+}
+
+# 説明制御文
+class DescriptionControl : ControlStatement {
+
+    DescriptionControl($match, $cell) : base($match, $cell) {
+        $this.Open('description')
+    }
+
+    [void] Output([ref]$templateCursor, $sheetDocument, [ref]$documentCursor, $target) {
+        # TODO
     }
 
 }
@@ -99,19 +157,8 @@ class IterationControl : ControlStatement {
 
     IterationControl($match, $cell) : base($match, $cell) {
         $this.target = $match[2]
-    }
-
-    [bool] IsNested() {
-        return $true
-    }
-
-    [void] Close($match, $cell) {
-        if ($match[2] -ne $this.target) {
-            throw (New-Object -TypeName 'System.InvalidOperationException' `
-                -ArgumentList ("制御文の組み合わせが正しくありません。指定: $($match[2]), 想定: $($this.target)"))
-        }
-
-        $this.length = $cell.Row - $this.row + 1
+        # Openする
+        $this.Open($this.target)
     }
 
     [void] Output([ref]$templateCursor, $sheetDocument, [ref]$documentCursor, $target) {
@@ -136,7 +183,7 @@ class IterationControl : ControlStatement {
                 $sheetDocument.Cells($documentCursor.Value + $this.length - 2, 1))
 
             $regex = [System.Text.RegularExpressions.Regex]'\{\$(\w+)\}'
-            [System.Text.RegularExpressions.MatchEvaluator]$replacer = {
+            [System.Text.RegularExpressions.MatchEvaluator] $replacer = {
                 param([System.Text.RegularExpressions.Match]$match)
                 # 置き換え
                 return (Invoke-Expression ('$target.' + "$($match.Groups[1])"))

@@ -95,6 +95,9 @@ class GananApplication {
                                     'codes' {
                                         $control = [CodesControl]::new($Matches, $cell)
                                     }
+                                    'description' {
+                                        $control = [DescriptionControl]::new($Matches, $cell)
+                                    }
                                     default {
                                         $control = [IterationControl]::new($Matches, $cell)
                                     }
