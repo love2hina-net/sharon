@@ -7,9 +7,9 @@
 .NOTES
     This project was released under the MIT Lincense.
 #>
-using module "./TargetInfo.psm1"
-using module "./TargetEnumerator.psm1"
-using module "./ControlStatement.psm1"
+using module '.\TargetInfo.psm1'
+using module '.\TargetEnumerator.psm1'
+using module '.\ControlStatement.psm1'
 
 [CmdletBinding()]
 param()
@@ -45,10 +45,12 @@ class GananApplication {
     [void] test() {
         $this.excel.Visible = $true
 
-        $this.xml = [System.Xml.XmlDocument](Get-Content 'D:\ServerFolders\Repository\Sharon\test.xml')
+        $projectRoot = (Convert-Path "$PSScriptRoot\\..\\..\\..")
+
+        $this.xml = [System.Xml.XmlDocument](Get-Content "$projectRoot\\test.xml")
         $this.xpath = $this.xml.CreateNavigator()
 
-        $this.bookTemplate = $this.excel.Workbooks.Open('D:\ServerFolders\Repository\Sharon\template\test.xlsm', 0, $true)
+        $this.bookTemplate = $this.excel.Workbooks.Open("$projectRoot\\template\\test.xlsm", 0, $true)
         $this.parseTemplate()
 
         $this.bookDocument = $this.excel.Workbooks.Add($global:const.xlWorksheet)

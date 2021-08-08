@@ -1,4 +1,4 @@
-﻿using module "./TargetInfo.psm1"
+﻿using module ".\TargetInfo.psm1"
 
 using namespace System.Xml.XPath
 
