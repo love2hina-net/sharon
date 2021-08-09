@@ -9,6 +9,7 @@
 #>
 using module '.\TargetInfo.psm1'
 using module '.\TargetEnumerator.psm1'
+using module '.\DocumentWriter.psm1'
 using module '.\ControlStatement.psm1'
 
 [CmdletBinding()]
@@ -61,6 +62,7 @@ class GananApplication {
         $this.excel = $null
     }
 
+    # 制御文解析
     [void] parseTemplate() {
         Write-Debug "[parseTemplate] begin template parsing..."
 
@@ -192,70 +194,22 @@ class GananApplication {
             }
 
             foreach ($target in $targetCursor) {
-                $sheetTemplate = $this.bookTemplate.WorkSheets.Item($entry.name)
-                [void]$sheetTemplate.Copy([System.Reflection.Missing]::Value, $this.bookDocument.WorkSheets.Item($this.bookDocument.WorkSheets.Count))
-                $sheetDocument = $this.bookDocument.WorkSheets.Item($this.bookDocument.WorkSheets.Count)
-                $lineTemplate = 0 # テンプレート側で出力した行位置
-                $lineDocument = 0 # 生成ドキュメント側で出力した行位置
+                $docWriter = [DocumentWriter]::new($this.bookTemplate, $this.bookDocument, $entry.name)
 
                 foreach ($control in $entry.controls) {
                     # 制御文までを出力
-                    $this.translateLines(([ref]$lineTemplate), ($control.row - 1), $sheetDocument, ([ref]$lineDocument), $target)
+                    $docWriter.outputPassThrough(($control.row - 1), $target)
 
                     # 制御文出力処理
-                    $control.Output(([ref]$lineTemplate), $sheetDocument, ([ref]$lineDocument), $target)
-
-                    # 生成ドキュメント側制御文削除
-                    [void]$sheetDocument.Rows("$($lineDocument + 1):$($lineDocument + $control.length)").Delete()
-
-                    # テンプレート側行位置制御
-                    $lineTemplate = $control.row + $control.length - 1
+                    $control.Output($docWriter, $target)
                 }
 
                 # 残りを出力
-                $this.translateLines(([ref]$lineTemplate), $global:config.searchLines, $sheetDocument, ([ref]$lineDocument), $target)
+                $docWriter.outputPassThrough($global:config.searchLines, $target)
 
                 # 子シートの出力
                 $this.enumEntries($target, $entry.entries)
             }
-        }
-    }
-
-    [void] translateLines([ref]$templateCursor, $templateEnd, $sheetDocument, [ref]$documentCursor, $target) {
-
-        $lines = $templateEnd - $templateCursor.Value
-
-        if ($lines -ge 1) {
-            $rangeLine = $sheetDocument.Range(
-                $sheetDocument.Cells($documentCursor.Value + 1, 1),
-                $sheetDocument.Cells($documentCursor.Value + $lines, 1))
-
-            $regex = [System.Text.RegularExpressions.Regex]'\{\$(\w+)\}'
-            [System.Text.RegularExpressions.MatchEvaluator]$replacer = {
-                param([System.Text.RegularExpressions.Match]$match)
-                # 置き換え
-                return (Invoke-Expression ('$target.' + "$($match.Groups[1])"))
-            }
-
-            # 置き換え処理
-            # 行のループ
-            foreach ($cell in $rangeLine) {
-                # 列のループ
-                do {
-                    $text = $cell.Text
-                    $replaced = $regex.Replace($text, $replacer)
-                    if ($text -ne $replaced) {
-                        $cell.Value = $replaced
-                    }
-
-                    # Ctrl + → と同等の処理で列挙高速化
-                    $cell = $cell.End($global:const.xlToRight)
-                } while ($cell.Column -le $global:config.searchColumns)
-            }
-
-            # 出力行数
-            $templateCursor.Value += $lines
-            $documentCursor.Value += $lines
         }
     }
 

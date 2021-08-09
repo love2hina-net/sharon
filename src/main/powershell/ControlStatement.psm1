@@ -1,4 +1,5 @@
-﻿
+﻿using module '.\DocumentWriter.psm1'
+
 # 制御文構造保持
 class ControlHolder {
 
@@ -8,7 +9,7 @@ class ControlHolder {
     # ネスト制御文種別
     [string] $token = ''
 
-    [void] Open([string]$token) {
+    [void] Open([string] $token) {
         if ($this.IsNested()) {
             throw (New-Object -TypeName 'System.InvalidOperationException' -ArgumentList ('既にOpenされている制御文に重複してOpenは実行できません。'))
         }
@@ -23,8 +24,6 @@ class ControlHolder {
                 throw (New-Object -TypeName 'System.InvalidOperationException' `
                     -ArgumentList ("制御文の組み合わせが正しくありません。指定: $($match[2]), 想定: $($this.token)"))
             }
-
-            $this.token = ''
         }
         else {
             throw (New-Object -TypeName 'System.InvalidOperationException' -ArgumentList ('ネストしない制御文に対するCloseは無効です。'))
@@ -79,9 +78,36 @@ class ControlStatement : ControlHolder {
         $this.length = $cell.Row - $this.row + 1
     }
 
-    [void] Output([ref]$templateCursor, $sheetDocument, [ref]$documentCursor, $targe) {
-        # 処理なし
+    [void] Output([DocumentWriter] $docWriter, $target) {
+        $this.beginTransaction($docWriter)
+        $this.commitTransaction($docWriter)
     }
+
+    #region ステートメントユーティリティー
+
+    # トランザクションの開始
+    hidden [void] beginTransaction([DocumentWriter] $docWriter) {
+        $docWriter.beginTransaction($this.row, $this.length)
+    }
+
+    # トランザクションのコミット
+    hidden [void] commitTransaction([DocumentWriter] $docWriter) {
+        $docWriter.commitTransaction()
+    }
+
+    # 挿入
+    hidden [void] append([DocumentWriter] $docWriter, $target) {
+        if ($this.IsNested()) {
+            # 開始と終了を除く
+            $docWriter.append($this.row + 1, $this.length - 2, $target)
+        }
+        else {
+            # 出力するものがない
+            throw (New-Object -TypeName 'System.InvalidOperationException' -ArgumentList ('ネストしない制御文に対する出力は無効です。'))
+        }
+    }
+
+    #endregion
 
 }
 
@@ -121,7 +147,8 @@ class CodesControl : ControlStatement {
         }
     }
 
-    [void] Output([ref]$templateCursor, $sheetDocument, [ref]$documentCursor, $target) {
+    # TODO
+    [long] Output([long] $lineTemplate, $sheetDocument, [ref] $documentCursor, $target) {
 
         $nodes = $target.node.Evaluate('block/node()')
 
@@ -132,6 +159,8 @@ class CodesControl : ControlStatement {
                 'condition' {}
             }
         }
+
+        return ([ControlStatement]$this).Output($lineTemplate, $sheetDocument, $documentCursor, $target)
     }
 
 }
@@ -143,8 +172,9 @@ class DescriptionControl : ControlStatement {
         $this.Open('description')
     }
 
-    [void] Output([ref]$templateCursor, $sheetDocument, [ref]$documentCursor, $target) {
+    [long] Output([long] $lineTemplate, $sheetDocument, [ref] $documentCursor, $target) {
         # TODO
+        return 0
     }
 
 }
@@ -161,53 +191,18 @@ class IterationControl : ControlStatement {
         $this.Open($this.target)
     }
 
-    [void] Output([ref]$templateCursor, $sheetDocument, [ref]$documentCursor, $target) {
+    [void] Output([DocumentWriter] $docWriter, $target) {
+        $this.beginTransaction($docWriter)
+
         # 列挙対象の取得
         $collections = (Invoke-Expression ('$target.' + "$($this.target)"))
 
         foreach ($i in $collections) {
-            # 繰り返しテンプレートの挿入
-            [void] $sheetDocument.Rows("$($documentCursor.Value + 2):$($documentCursor.Value + $this.length - 1)").Copy()
-            [void] $sheetDocument.Rows("$($documentCursor.Value + 1)").Insert($global:const.xlShiftDown)
-
-            # 置換処理
-            $this.translateLines($sheetDocument, $documentCursor, $i)
+            # 繰り返し出力する
+            $this.append($docWriter, $i)
         }
-    }
 
-    [void] translateLines($sheetDocument, [ref]$documentCursor, $target) {
-
-        if ($this.length -ge 3) {
-            $rangeLine = $sheetDocument.Range(
-                $sheetDocument.Cells($documentCursor.Value + 1, 1),
-                $sheetDocument.Cells($documentCursor.Value + $this.length - 2, 1))
-
-            $regex = [System.Text.RegularExpressions.Regex]'\{\$(\w+)\}'
-            [System.Text.RegularExpressions.MatchEvaluator] $replacer = {
-                param([System.Text.RegularExpressions.Match]$match)
-                # 置き換え
-                return (Invoke-Expression ('$target.' + "$($match.Groups[1])"))
-            }
-
-            # 置き換え処理
-            # 行のループ
-            foreach ($cell in $rangeLine) {
-                # 列のループ
-                do {
-                    $text = $cell.Text
-                    $replaced = $regex.Replace($text, $replacer)
-                    if ($text -ne $replaced) {
-                        $cell.Value = $replaced
-                    }
-
-                    # Ctrl + → と同等の処理で列挙高速化
-                    $cell = $cell.End($global:const.xlToRight)
-                } while ($cell.Column -le $global:config.searchColumns)
-            }
-
-            # 出力行数
-            $documentCursor.Value += $this.length - 2
-        }
+        $this.commitTransaction($docWriter)
     }
 
 }
