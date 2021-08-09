@@ -33,7 +33,7 @@ class GananApplication {
     # テンプレートフォーマット情報
     $format = @{ entries = @() }
     # Excel Application
-    $excel = (New-Object -ComObject "Excel.Application")
+    $excel = (New-Object -ComObject 'Excel.Application')
     # テンプレートワークブック
     $bookTemplate
     # 生成ドキュメントワークブック
@@ -64,7 +64,7 @@ class GananApplication {
 
     # 制御文解析
     [void] parseTemplate() {
-        Write-Debug "[parseTemplate] begin template parsing..."
+        Write-Debug '[parseTemplate] begin template parsing...'
 
         [SheetFormat] $parSheetFmt = $null # 親シート
 
@@ -155,7 +155,7 @@ class GananApplication {
             }
         }
 
-        Write-Debug "[parseTemplate] end template parsing."
+        Write-Debug '[parseTemplate] end template parsing.'
     }
 
     [void] makeDocument() {

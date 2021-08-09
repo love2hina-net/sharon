@@ -1,4 +1,5 @@
-﻿using module '.\DocumentWriter.psm1'
+﻿using module '.\TargetInfo.psm1'
+using module '.\DocumentWriter.psm1'
 
 # 制御文構造保持
 class ControlHolder {
@@ -145,22 +146,30 @@ class CodesControl : ControlStatement {
                 }
             }
         }
+
+        # 定義チェック
+        if ($null -eq $this.descCtrl) {
+            throw (New-Object -TypeName 'System.InvalidOperationException' `
+                -ArgumentList ('コード制御文(codes)中に記述制御文(description)が未定義です。'))
+        }
     }
 
-    # TODO
-    [long] Output([long] $lineTemplate, $sheetDocument, [ref] $documentCursor, $target) {
+    [void] Output([DocumentWriter] $docWriter, $target) {
+        $this.beginTransaction($docWriter)
 
         $nodes = $target.node.Evaluate('block/node()')
 
         foreach ($node in $nodes) {
             # TODO: 登場する要素によって出力を分ける
             switch ($node.Name) {
-                'comment' {}
+                'comment' {
+                    $this.descCtrl.Output($docWriter, ([DescriptionTargetInfo]::new($node, $docWriter)))
+                }
                 'condition' {}
             }
         }
 
-        return ([ControlStatement]$this).Output($lineTemplate, $sheetDocument, $documentCursor, $target)
+        $this.commitTransaction($docWriter)
     }
 
 }
@@ -172,9 +181,13 @@ class DescriptionControl : ControlStatement {
         $this.Open('description')
     }
 
-    [long] Output([long] $lineTemplate, $sheetDocument, [ref] $documentCursor, $target) {
-        # TODO
-        return 0
+    [void] Output([DocumentWriter] $docWriter, $target) {
+        $this.beginTransaction($docWriter)
+
+        # 単純出力
+        $this.append($docWriter, $target)
+
+        $this.commitTransaction($docWriter)
     }
 
 }

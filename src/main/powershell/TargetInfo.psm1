@@ -92,3 +92,26 @@ class MethodTargetInfo : TargetInfo {
     }
 
 }
+
+class DescriptionTargetInfo : TargetInfo {
+
+    # 段落番号
+    [string] $number
+    # 記述
+    [string] $description
+
+    DescriptionTargetInfo([XPathNavigator]$node, $docWriter) : base($node) {
+
+        [string] $desc = $node.Evaluate('text()')
+        if ($desc -match '^#\s?(\S+)') {
+            # 段落番号を設定する
+            $title = $Matches[1]
+            $this.number = $docWriter.incrementParagraph($title)
+            $this.description = $title
+        }
+        else {
+            $this.description = $node.Evaluate('text()')
+        }
+    }
+
+}

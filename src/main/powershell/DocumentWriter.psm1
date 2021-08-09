@@ -1,4 +1,6 @@
-﻿
+﻿using namespace System.Collections.Generic
+using namespace System.Text.RegularExpressions
+
 # トランザクション情報
 class TransactionRange {
     # 行
@@ -20,15 +22,23 @@ class DocumentWriter {
     [long] $lineDocument = 0
 
     # トランザクションスタック
-    [System.Collections.Generic.Stack[TransactionRange]] $stackTransaction =
+    [Stack[TransactionRange]] $stackTransaction =
         (New-Object -TypeName 'System.Collections.Generic.Stack[TransactionRange]')
 
+    # 段落番号
+    [Stack[Int32]] $stackParagraph =
+        (New-Object -TypeName 'System.Collections.Generic.Stack[Int32]')
+
+    # 段落構成
+    [Dictionary[string, string]] $dictionaryParagraph =
+        (New-Object -TypeName 'System.Collections.Generic.Dictionary[string, string]')
+
     # 変数値Regex
-    [System.Text.RegularExpressions.Regex] $regexVarExp = [System.Text.RegularExpressions.Regex]'\{\$(\w+)\}'
+    [Regex] $regexVarExp = [Regex]'\{\$(\w+)\}'
 
     # 変数値置換子
-    [System.Text.RegularExpressions.MatchEvaluator] $evalVarReplacer = {
-        param([System.Text.RegularExpressions.Match] $match)
+    [MatchEvaluator] $evalVarReplacer = {
+        param([Match] $match)
         # 置き換え
         return (Invoke-Expression ('$target.' + "$($match.Groups[1])"))
     }
@@ -40,7 +50,12 @@ class DocumentWriter {
         [void]$sheetTemplate.Copy([System.Reflection.Missing]::Value, $bookDocument.WorkSheets.Item($bookDocument.WorkSheets.Count))
         # コピーしたシートの参照を取得
         $this.sheetDocument = $bookDocument.WorkSheets.Item($bookDocument.WorkSheets.Count)
+
+        # 項番に初期値を設定
+        $this.stackParagraph.Push(0)
     }
+
+    #region テンプレート出力
 
     # トランザクションの開始
     [void] beginTransaction([long] $lineStart, [long] $lineLength) {
@@ -194,5 +209,45 @@ class DocumentWriter {
             $this.lineTemplate += $lines
         }
     }
+
+    #endregion
+
+    #region 段落番号
+
+    [string] getCurrentParagraphNumber() {
+        [System.Text.StringBuilder] $strNumber = [System.Text.StringBuilder]''
+
+        foreach ($i in $this.stackParagraph) {
+            if ($strNumber.Length -gt 0) {
+                $strNumber.Append('.')
+            }
+            $strNumber.Append($i)
+        }
+
+        return $strNumber.ToString()
+    }
+
+    [string] incrementParagraph([string] $title) {
+        [int] $number = $this.stackParagraph.Pop()
+        return $this._pushParagraph((++$number), $title)
+    }
+
+    [string] pushParagraph([string] $title) {
+        return $this._pushParagraph(1, $title)
+    }
+
+    hidden [string] _pushParagraph([int] $number, [string] $title) {
+        $this.stackParagraph.Push($number)
+        [string] $result = $this.getCurrentParagraphNumber()
+        # 項目の登録
+        $this.dictionaryParagraph.Add($result, $title)
+        return $result
+    }
+
+    [void] popParagraph() {
+        $this.stackParagraph.Pop()
+    }
+
+    #endregion
 
 }
