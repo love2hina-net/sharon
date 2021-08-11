@@ -115,3 +115,21 @@ class DescriptionTargetInfo : TargetInfo {
     }
 
 }
+
+class ConditionTargetInfo : TargetInfo {
+
+    # 項目番号
+    [string] $index
+    # 段落番号
+    [string] $number
+    # 記述
+    [string] $description
+
+    ConditionTargetInfo([XPathNavigator]$node, [string]$number, [int]$index) : base($node) {
+
+        $this.index = $index
+        $this.number = [string]::Format('{0}.{1}', $number, $index)
+        $this.description = $node.Evaluate('comment/text()')
+    }
+
+}

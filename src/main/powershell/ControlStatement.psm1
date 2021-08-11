@@ -1,4 +1,5 @@
 ﻿using module '.\TargetInfo.psm1'
+using module '.\TargetEnumerator.psm1'
 using module '.\DocumentWriter.psm1'
 
 # 制御文構造保持
@@ -129,6 +130,8 @@ class CodesControl : ControlStatement {
 
     # ロジック説明制御文
     [DescriptionControl] $descCtrl
+    # 条件制御文
+    [ConditionControl] $condCtrl
 
     CodesControl($match, $cell) : base($match, $cell) {
         $this.Open('codes')
@@ -144,6 +147,9 @@ class CodesControl : ControlStatement {
                 { $_ -is [DescriptionControl] } {
                     $this.descCtrl = $control
                 }
+                { $_ -is [ConditionControl] } {
+                    $this.condCtrl = $control
+                }
             }
         }
 
@@ -151,6 +157,10 @@ class CodesControl : ControlStatement {
         if ($null -eq $this.descCtrl) {
             throw (New-Object -TypeName 'System.InvalidOperationException' `
                 -ArgumentList ('コード制御文(codes)中に記述制御文(description)が未定義です。'))
+        }
+        if ($null -eq $this.condCtrl) {
+            throw (New-Object -TypeName 'System.InvalidOperationException' `
+                -ArgumentList ('コード制御文(codes)中に条件制御文(condition)が未定義です。'))
         }
     }
 
@@ -165,7 +175,12 @@ class CodesControl : ControlStatement {
                 'comment' {
                     $this.descCtrl.Output($docWriter, ([DescriptionTargetInfo]::new($node, $docWriter)))
                 }
-                'condition' {}
+                'condition' {
+                    $cases = [ConditionTargetEnumerator]::new($node, ($docWriter.getCurrentParagraphNumber()))
+                    foreach ($case in $cases) {
+                        $this.condCtrl.Output($docWriter, $case)
+                    }
+                }
             }
         }
 
@@ -179,6 +194,24 @@ class DescriptionControl : ControlStatement {
 
     DescriptionControl($match, $cell) : base($match, $cell) {
         $this.Open('description')
+    }
+
+    [void] Output([DocumentWriter] $docWriter, $target) {
+        $this.beginTransaction($docWriter)
+
+        # 単純出力
+        $this.append($docWriter, $target)
+
+        $this.commitTransaction($docWriter)
+    }
+
+}
+
+# 条件制御文
+class ConditionControl : ControlStatement {
+
+    ConditionControl($match, $cell) : base($match, $cell) {
+        $this.Open('condition')
     }
 
     [void] Output([DocumentWriter] $docWriter, $target) {

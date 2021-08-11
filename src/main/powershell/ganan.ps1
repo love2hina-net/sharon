@@ -100,6 +100,9 @@ class GananApplication {
                                     'description' {
                                         $control = [DescriptionControl]::new($Matches, $cell)
                                     }
+                                    'condition' {
+                                        $control = [ConditionControl]::new($Matches, $cell)
+                                    }
                                     default {
                                         $control = [IterationControl]::new($Matches, $cell)
                                     }

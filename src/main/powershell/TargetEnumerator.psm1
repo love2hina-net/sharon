@@ -13,6 +13,11 @@ class TargetEnumerator : System.Collections.IEnumerable, System.Collections.IEnu
         $this._query = $null
     }
 
+    TargetEnumerator([XPathNodeIterator]$query) {
+        $this._query = $query
+    }
+
+    # ルートから検索するか自動判定
     TargetEnumerator([object]$parent, [string]$tag) {
         $info = $parent -as [TargetInfo]
         $xpath = $parent -as [XPathNavigator]
@@ -72,6 +77,23 @@ class MethodTargetEnumerator : TargetEnumerator {
 
     [TargetInfo] CreateInfo([XPathNavigator]$node) {
         return [MethodTargetInfo]::new($node)
+    }
+
+}
+
+class ConditionTargetEnumerator : TargetEnumerator {
+
+    # 項目番号
+    [int] $index = 0
+    # 段落番号
+    [string] $number
+
+    ConditionTargetEnumerator([XPathNavigator]$node, [string]$number) : base($node.Evaluate('case')) {
+        $this.number = $number
+    }
+
+    [TargetInfo] CreateInfo([XPathNavigator]$node) {
+        return [ConditionTargetInfo]::new($node, $this.number, ++$this.index)
     }
 
 }

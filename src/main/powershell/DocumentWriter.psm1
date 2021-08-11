@@ -174,8 +174,16 @@ class DocumentWriter {
                     $cell.Value = $replaced
                 }
 
-                # Ctrl + → と同等の処理で列挙高速化
-                $cell = $cell.End($global:const.xlToRight)
+                # 次のセル
+                $next = $cell.Item(1, 2)
+                if ($next.Text -ne '') {
+                    # 次のセルに値がある(連続)
+                    $cell = $next
+                }
+                else {
+                    # Ctrl + → と同等の処理で列挙高速化
+                    $cell = $cell.End($global:const.xlToRight)
+                }
             } while ($cell.Column -le $global:config.searchColumns)
         }
 
