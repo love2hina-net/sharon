@@ -170,16 +170,28 @@ class CodesControl : ControlStatement {
         $nodes = $target.node.Evaluate('block/node()')
 
         foreach ($node in $nodes) {
-            # TODO: 登場する要素によって出力を分ける
+            # 登場する要素によって出力を分ける
             switch ($node.Name) {
                 'comment' {
+                    # 処理記述
                     $this.descCtrl.Output($docWriter, ([DescriptionTargetInfo]::new($node, $docWriter)))
                 }
                 'condition' {
-                    $cases = [ConditionTargetEnumerator]::new($node, ($docWriter.getCurrentParagraphNumber()))
+                    $paraNumber = $docWriter.getCurrentParagraphNumber()
+                    # 条件表
+                    $cases = [ConditionTargetEnumerator]::new($node, $paraNumber)
                     foreach ($case in $cases) {
                         $this.condCtrl.Output($docWriter, $case)
                     }
+                    # 記述部
+                    $docWriter.pushParagraph()
+                    # TargetEnumeratorはリセットできないので、作り直し
+                    $cases = [ConditionTargetEnumerator]::new($node, $paraNumber)
+                    foreach ($case in $cases) {
+                        # 再帰呼び出し
+                        $this.Output($docWriter, $case)
+                    }
+                    $docWriter.popParagraph()
                 }
             }
         }

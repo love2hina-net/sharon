@@ -52,7 +52,7 @@ class DocumentWriter {
         $this.sheetDocument = $bookDocument.WorkSheets.Item($bookDocument.WorkSheets.Count)
 
         # 項番に初期値を設定
-        $this.stackParagraph.Push(0)
+        $this.pushParagraph()
     }
 
     #region テンプレート出力
@@ -227,9 +227,9 @@ class DocumentWriter {
 
         foreach ($i in $this.stackParagraph) {
             if ($strNumber.Length -gt 0) {
-                $strNumber.Append('.')
+                $strNumber.Insert(0, '.')
             }
-            $strNumber.Append($i)
+            $strNumber.Insert(0, $i)
         }
 
         return $strNumber.ToString()
@@ -240,8 +240,8 @@ class DocumentWriter {
         return $this._pushParagraph((++$number), $title)
     }
 
-    [string] pushParagraph([string] $title) {
-        return $this._pushParagraph(1, $title)
+    [void] pushParagraph() {
+        $this.stackParagraph.Push(0)
     }
 
     hidden [string] _pushParagraph([int] $number, [string] $title) {

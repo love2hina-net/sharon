@@ -50,17 +50,18 @@ public class ParseTestTarget extends Object implements java.io.Serializable {
          * かきく
          */
 
+        /// # 条件判断
         /// if
         if (true) {
-
+            /// # 1つめの条件を満たす場合
         }
         /// else if
         else if (false) {
-
+            /// # 2つめの条件を満たす場合
         }
         /// else
         else {
-
+            /// # その他の場合
         }
 
         String str = "";
