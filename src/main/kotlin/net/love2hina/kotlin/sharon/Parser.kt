@@ -424,7 +424,11 @@ internal class Parser(val file: File) {
             n.thrownExceptions.forEach { it.accept(this, arg) }
 
             // ステートメント
-            n.body.ifPresent { it.accept(this, arg) }
+            n.body.ifPresent {
+                writer.writeStartElement("code")
+                it.accept(this, arg)
+                writer.writeEndElement()
+            }
 
             writer.writeEndElement()
         }
@@ -469,8 +473,6 @@ internal class Parser(val file: File) {
         override fun visit(n: BlockStmt?, arg: Void?) {
             n!!
 
-            writer.writeStartElement("block")
-
             val positionUnknown = Position(Int.MAX_VALUE, 0)
             val rangeUnknown = Range(positionUnknown, positionUnknown)
 
@@ -480,8 +482,6 @@ internal class Parser(val file: File) {
                     x.range.orElse(rangeUnknown).begin.line,
                     y.range.orElse(rangeUnknown).begin.line)
                 }.forEach { it.accept(this, arg) }
-
-            writer.writeEndElement()
         }
 
         override fun visit(n: ExpressionStmt?, arg: Void?) {
@@ -605,7 +605,9 @@ internal class Parser(val file: File) {
             writer.writeStrings(n.condition.toString())
             writer.writeEndElement()
             // 本文
+            writer.writeStartElement("code")
             n.thenStmt.accept(this, arg)
+            writer.writeEndElement()
 
             writer.writeEndElement()
 
@@ -632,7 +634,9 @@ internal class Parser(val file: File) {
                     writer.writeStrings(e.condition.toString())
                     writer.writeEndElement()
                     // 本文
+                    writer.writeStartElement("code")
                     e.thenStmt.accept(this, arg)
+                    writer.writeEndElement()
 
                     writer.writeEndElement()
 
@@ -646,7 +650,9 @@ internal class Parser(val file: File) {
                     // コメント
                     e.comment.ifPresent { it.accept(this, arg) }
                     // 本文
+                    writer.writeStartElement("code")
                     e.accept(this, arg)
+                    writer.writeEndElement()
 
                     writer.writeEndElement()
                 }
@@ -659,13 +665,13 @@ internal class Parser(val file: File) {
         override fun visit(n: SwitchStmt?, arg: Void?) {
             n!!
 
+            // コメント
+            n.comment.ifPresent { it.accept(this, arg) }
+
             // 条件分岐の出力
             writer.writeStartElement("condition")
             writer.writeAttribute("type", "switch")
             writer.writeAttribute("selector", n.selector.toString())
-
-            // コメント
-            n.comment.ifPresent { it.accept(this, arg) }
 
             var caseContinue = false
 
@@ -683,7 +689,9 @@ internal class Parser(val file: File) {
                     writer.writeEndElement()
                 }
                 // 本文
+                writer.writeStartElement("code")
                 i.statements.forEach { it.accept(this, arg) }
+                writer.writeEndElement()
 
                 caseContinue = i.statements.isEmpty()
                 if (!caseContinue)
@@ -728,7 +736,9 @@ internal class Parser(val file: File) {
                 writer.writeAttribute("expr", it.toString())
             }
             // 本文
+            writer.writeStartElement("code")
             n.body.accept(this, arg)
+            writer.writeEndElement()
 
             writer.writeEndElement()
         }
@@ -751,7 +761,9 @@ internal class Parser(val file: File) {
             writer.writeEmptyElement("variable")
             writer.writeAttribute("expression", n.variable.toString())
             // 本文
+            writer.writeStartElement("code")
             n.body.accept(this, arg)
+            writer.writeEndElement()
 
             writer.writeEndElement()
         }
@@ -771,7 +783,9 @@ internal class Parser(val file: File) {
             writer.writeEmptyElement("condition")
             writer.writeAttribute("expr", n.condition.toString())
             // 本文
+            writer.writeStartElement("code")
             n.body.accept(this, arg)
+            writer.writeEndElement()
 
             writer.writeEndElement()
         }
@@ -791,7 +805,9 @@ internal class Parser(val file: File) {
             writer.writeEmptyElement("condition")
             writer.writeAttribute("expr", n.condition.toString())
             // 本文
+            writer.writeStartElement("code")
             n.body.accept(this, arg)
+            writer.writeEndElement()
 
             writer.writeEndElement()
         }
@@ -802,15 +818,14 @@ internal class Parser(val file: File) {
         override fun visit(n: BreakStmt?, arg: Void?) {
             n!!
 
+            // コメント
+            n.comment.ifPresent { it.accept(this, arg) }
+
             writer.writeStartElement("break")
             // ラベル
             n.label.ifPresent {
                 writer.writeAttribute("label", it.asString())
             }
-
-            // コメント
-            n.comment.ifPresent { it.accept(this, arg) }
-
             writer.writeEndElement()
         }
 
@@ -820,15 +835,14 @@ internal class Parser(val file: File) {
         override fun visit(n: ContinueStmt?, arg: Void?) {
             n!!
 
+            // コメント
+            n.comment.ifPresent { it.accept(this, arg) }
+
             writer.writeStartElement("continue")
             // ラベル
             n.label.ifPresent {
                 writer.writeAttribute("label", it.asString())
             }
-
-            // コメント
-            n.comment.ifPresent { it.accept(this, arg) }
-
             writer.writeEndElement()
         }
 

@@ -167,7 +167,7 @@ class CodesControl : ControlStatement {
     [void] Output([DocumentWriter] $docWriter, $target) {
         $this.beginTransaction($docWriter)
 
-        $nodes = $target.node.Evaluate('block/node()')
+        $nodes = $target.node.Evaluate('code/node()')
 
         foreach ($node in $nodes) {
             # 登場する要素によって出力を分ける

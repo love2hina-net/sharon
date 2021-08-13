@@ -66,13 +66,22 @@ public class ParseTestTarget extends Object implements java.io.Serializable {
 
         String str = "";
 
+        /// # switch文
         switch (str) {
             /// 文字列
             case "":
             case "ABC":
+                /// # 文字列の処理
                 break;
+            /// 小文字
+            case "abc":
+            {
+                /// # ブロック内
+                break;
+            }
             /// その他
             default:
+                /// # その他
                 throw new RuntimeException();
         }
 
