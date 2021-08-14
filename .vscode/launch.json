@@ -11,6 +11,14 @@
             "script": "${workspaceFolder}/src/main/powershell/ganan.ps1",
             "args": ["-Debug", "-Verbose", "-ErrorAction Break"],
             "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "PowerShell: Launch Regex",
+            "type": "PowerShell",
+            "request": "launch",
+            "script": "${workspaceFolder}/src/test/powershell/regex.ps1",
+            "args": ["-Debug", "-Verbose", "-ErrorAction Stop"],
+            "cwd": "${workspaceFolder}"
         }
     ]
 }
