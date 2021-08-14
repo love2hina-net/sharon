@@ -12,6 +12,10 @@ using module '.\TargetEnumerator.psm1'
 using module '.\DocumentWriter.psm1'
 using module '.\ControlStatement.psm1'
 
+using namespace System.Collections.Generic
+using namespace System.Text.RegularExpressions
+using namespace System.Linq
+
 [CmdletBinding()]
 param()
 
@@ -80,37 +84,48 @@ class GananApplication {
 
                 # A列のセルを走査
                 foreach ($cell in $sheet.Range("A1:A$($global:config.searchLines)").Cells) {
-                    if ($cell.Text -match '\{#(\w+)(?:\s+(\S+))*\}') {
-                        Write-Verbose "[parseTemplate] found control statement: $($Matches[0])"
+                    [Match] $match = [Regex]::Match($cell.Text, '\{#(\w+)(?:\s+(\S+))*\}')
+                    if ($match.Success) {
+                        Write-Verbose "[parseTemplate] found control statement: $($match.Value)"
+
+                        # パラメーター展開
+                        [string[]] $params = @()
+                        foreach ($i in $match.Groups) {
+                            $_values = [Enumerable]::Select($i.Captures, [Func[Capture, string]] {
+                                param([Capture] $capture)
+                                return $capture.Value
+                            })
+                            $params += [Enumerable]::ToArray($_values)
+                        }
 
                         # 制御文
                         $control = $null
-                        switch ($Matches[1]) {
+                        switch ($params[1]) {
                             'sheet' {
-                                $control = [SheetControl]::new($Matches, $cell)
+                                $control = [SheetControl]::new($params, $cell)
                                 # このシートの種別を記録
                                 $curSheetFmt.type = $control.type
                             }
                             'begin' {
                                 # 第2パラメーターによって分岐
-                                switch ($Matches[2]) {
+                                switch ($params[2]) {
                                     'codes' {
-                                        $control = [CodesControl]::new($Matches, $cell)
+                                        $control = [CodesControl]::new($params, $cell)
                                     }
                                     'description' {
-                                        $control = [DescriptionControl]::new($Matches, $cell)
+                                        $control = [DescriptionControl]::new($params, $cell)
                                     }
                                     'condition' {
-                                        $control = [ConditionControl]::new($Matches, $cell)
+                                        $control = [ConditionControl]::new($params, $cell)
                                     }
                                     default {
-                                        $control = [IterationControl]::new($Matches, $cell)
+                                        $control = [IterationControl]::new($params, $cell)
                                     }
                                 }
                             }
                             'end' {
                                 $last = $stackControl.Pop()
-                                $last.Close($Matches, $cell)
+                                $last.Close($params, $cell)
                             }
                         }
                         if ($null -ne $control) {

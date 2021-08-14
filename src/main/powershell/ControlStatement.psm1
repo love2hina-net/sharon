@@ -19,12 +19,12 @@ class ControlHolder {
         $this.token = $token
     }
 
-    [void] Close($match, $cell) {
+    [void] Close([string[]] $params, $cell) {
         if ($this.IsNested()) {
             # クローズトークンチェック
-            if ($match[2] -ne $this.token) {
+            if ($params[2] -ne $this.token) {
                 throw (New-Object -TypeName 'System.InvalidOperationException' `
-                    -ArgumentList ("制御文の組み合わせが正しくありません。指定: $($match[2]), 想定: $($this.token)"))
+                    -ArgumentList ("制御文の組み合わせが正しくありません。指定: $($params[2]), 想定: $($this.token)"))
             }
         }
         else {
@@ -67,45 +67,82 @@ class ControlStatement : ControlHolder {
     # 行数
     [long] $length = 1
 
-    ControlStatement($match, $cell) {
-        $this.command = $match[1]
+    # ヘッダー行数
+    [long] $headerLength = 0
+    # フッター行数
+    [long] $footerLength = 0
+
+    ControlStatement([string[]] $params, $cell) {
+        $this.command = $params[1]
         $this.row = $cell.Row
+
+        # 拡張パラメーター
+        for ($i = 2; $i -lt $params.Length; ++$i) {
+            if ($params[$i] -match '^(\w+):(\d+)$') {
+                switch ($Matches[1]) {
+                    'header' { $this.headerLength = [long]$Matches[2] }
+                    'footer' { $this.footerLength = [long]$Matches[2] }
+                }
+            }
+        }
     }
 
-    [void] Close($match, $cell) {
+    [void] Close([string[]] $params, $cell) {
         # 基底処理呼び出し
-        ([ControlHolder]$this).Close($match, $cell)
+        ([ControlHolder]$this).Close($params, $cell)
 
         # 行数算出
         $this.length = $cell.Row - $this.row + 1
+        if ($this.headerLength + $this.footerLength -gt $this.length) {
+            throw (New-Object -TypeName 'System.InvalidOperationException' `
+                -ArgumentList ('ヘッダー／フッター行数が定義済みのブロック行数を超えています。'))
+        }
     }
 
     [void] Output([DocumentWriter] $docWriter, $target) {
-        $this.beginTransaction($docWriter)
-        $this.commitTransaction($docWriter)
+        $this._beginTransaction($docWriter)
+        $this._commitTransaction($docWriter)
     }
 
     #region ステートメントユーティリティー
 
     # トランザクションの開始
-    hidden [void] beginTransaction([DocumentWriter] $docWriter) {
+    hidden [void] _beginTransaction([DocumentWriter] $docWriter) {
         $docWriter.beginTransaction($this.row, $this.length)
     }
 
     # トランザクションのコミット
-    hidden [void] commitTransaction([DocumentWriter] $docWriter) {
+    hidden [void] _commitTransaction([DocumentWriter] $docWriter) {
         $docWriter.commitTransaction()
     }
 
+    hidden [void] _appendHeader([DocumentWriter] $docWriter, $target) {
+        if ($this.headerLength -gt 0) {
+            $docWriter.append($this.row + 1, $this.headerLength, $target)
+        }
+    }
+
     # 挿入
-    hidden [void] append([DocumentWriter] $docWriter, $target) {
+    hidden [void] _appendBody([DocumentWriter] $docWriter, $target) {
         if ($this.IsNested()) {
             # 開始と終了を除く
-            $docWriter.append($this.row + 1, $this.length - 2, $target)
+            $appendLength = $this.length - $this.headerLength - $this.footerLength - 2
+            if ($appendLength -gt 0) {
+                $docWriter.append($this.row + $this.headerLength + 1, $appendLength, $target)
+            }
         }
         else {
             # 出力するものがない
             throw (New-Object -TypeName 'System.InvalidOperationException' -ArgumentList ('ネストしない制御文に対する出力は無効です。'))
+        }
+    }
+
+    hidden [void] _appendFooter([DocumentWriter] $docWriter, $target) {
+        if ($this.footerLength -gt 0) {
+            $docWriter.append(
+                $this.row + $this.length - $this.footerLength - 1,
+                $this.footerLength,
+                $target)
         }
     }
 
@@ -119,8 +156,8 @@ class SheetControl : ControlStatement {
     # 登場区分
     [string] $type
 
-    SheetControl($match, $cell) : base($match, $cell) {
-        $this.type = $match[2]
+    SheetControl([string[]] $params, $cell) : base($params, $cell) {
+        $this.type = $params[2]
     }
 
 }
@@ -133,13 +170,13 @@ class CodesControl : ControlStatement {
     # 条件制御文
     [ConditionControl] $condCtrl
 
-    CodesControl($match, $cell) : base($match, $cell) {
+    CodesControl([string[]] $params, $cell) : base($params, $cell) {
         $this.Open('codes')
     }
 
-    [void] Close($match, $cell) {
+    [void] Close([string[]] $params, $cell) {
         # 基底処理呼び出し
-        ([ControlStatement]$this).Close($match, $cell)
+        ([ControlStatement]$this).Close($params, $cell)
 
         # 定義の割り当て
         foreach ($control in $this.controls) {
@@ -165,7 +202,7 @@ class CodesControl : ControlStatement {
     }
 
     [void] Output([DocumentWriter] $docWriter, $target) {
-        $this.beginTransaction($docWriter)
+        $this._beginTransaction($docWriter)
 
         $nodes = $target.node.Evaluate('code/node()')
 
@@ -180,9 +217,7 @@ class CodesControl : ControlStatement {
                     $paraNumber = $docWriter.getCurrentParagraphNumber()
                     # 条件表
                     $cases = [ConditionTargetEnumerator]::new($node, $paraNumber)
-                    foreach ($case in $cases) {
-                        $this.condCtrl.Output($docWriter, $case)
-                    }
+                    $this.condCtrl.Output($docWriter, $cases)
                     # 記述部
                     $docWriter.pushParagraph()
                     # TargetEnumeratorはリセットできないので、作り直し
@@ -196,7 +231,7 @@ class CodesControl : ControlStatement {
             }
         }
 
-        $this.commitTransaction($docWriter)
+        $this._commitTransaction($docWriter)
     }
 
 }
@@ -204,17 +239,19 @@ class CodesControl : ControlStatement {
 # 説明制御文
 class DescriptionControl : ControlStatement {
 
-    DescriptionControl($match, $cell) : base($match, $cell) {
+    DescriptionControl([string[]] $params, $cell) : base($params, $cell) {
         $this.Open('description')
     }
 
     [void] Output([DocumentWriter] $docWriter, $target) {
-        $this.beginTransaction($docWriter)
+        $this._beginTransaction($docWriter)
 
         # 単純出力
-        $this.append($docWriter, $target)
+        $this._appendHeader($docWriter, $target)
+        $this._appendBody($docWriter, $target)
+        $this._appendFooter($docWriter, $target)
 
-        $this.commitTransaction($docWriter)
+        $this._commitTransaction($docWriter)
     }
 
 }
@@ -222,17 +259,23 @@ class DescriptionControl : ControlStatement {
 # 条件制御文
 class ConditionControl : ControlStatement {
 
-    ConditionControl($match, $cell) : base($match, $cell) {
+    ConditionControl([string[]] $params, $cell) : base($params, $cell) {
         $this.Open('condition')
     }
 
     [void] Output([DocumentWriter] $docWriter, $target) {
-        $this.beginTransaction($docWriter)
+        $this._beginTransaction($docWriter)
 
-        # 単純出力
-        $this.append($docWriter, $target)
+        $this._appendHeader($docWriter, $target)
 
-        $this.commitTransaction($docWriter)
+        # 条件を繰り返す
+        foreach ($i in $target) {
+            $this._appendBody($docWriter, $i)
+        }
+
+        $this._appendFooter($docWriter, $target)
+
+        $this._commitTransaction($docWriter)
     }
 
 }
@@ -243,24 +286,27 @@ class IterationControl : ControlStatement {
     # 対象
     [string] $target
 
-    IterationControl($match, $cell) : base($match, $cell) {
-        $this.target = $match[2]
+    IterationControl([string[]] $params, $cell) : base($params, $cell) {
+        $this.target = $params[2]
         # Openする
         $this.Open($this.target)
     }
 
     [void] Output([DocumentWriter] $docWriter, $target) {
-        $this.beginTransaction($docWriter)
+        $this._beginTransaction($docWriter)
+
+        $this._appendHeader($docWriter, $target)
 
         # 列挙対象の取得
         $collections = (Invoke-Expression ('$target.' + "$($this.target)"))
-
         foreach ($i in $collections) {
             # 繰り返し出力する
-            $this.append($docWriter, $i)
+            $this._appendBody($docWriter, $i)
         }
 
-        $this.commitTransaction($docWriter)
+        $this._appendFooter($docWriter, $target)
+
+        $this._commitTransaction($docWriter)
     }
 
 }
