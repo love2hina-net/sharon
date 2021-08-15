@@ -224,6 +224,8 @@ class GananApplication {
 
                 # 残りを出力
                 $docWriter.outputPassThrough($global:config.searchLines, $target)
+                # ファイナライズ
+                $docWriter.finalize()
 
                 # 子シートの出力
                 $this.enumEntries($target, $entry.entries)

@@ -122,6 +122,8 @@ class ConditionTargetInfo : TargetInfo {
     [string] $index
     # 段落番号
     [string] $number
+    # 段落名
+    [string] $title
     # 記述
     [string] $description
 
@@ -129,6 +131,7 @@ class ConditionTargetInfo : TargetInfo {
 
         $this.index = $index
         $this.number = [string]::Format('{0}.{1}', $number, $index)
+        $this.title = '{*paragraph ' + $this.number + '}'
         $this.description = $node.Evaluate('comment/text()')
     }
 

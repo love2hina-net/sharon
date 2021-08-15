@@ -40,8 +40,28 @@ class DocumentWriter {
     [MatchEvaluator] $evalVarReplacer = {
         param([Match] $match)
         # 置き換え
-        return (Invoke-Expression ('$target.' + "$($match.Groups[1])"))
+        return (Invoke-Expression ('$target.' + "$($match.Groups[1].Value)"))
     }
+
+    # 遅延置換Regex
+    [Regex] $regexLateRep = [Regex]'\{\*(\w+)(?:\s+(\S+))*\}'
+
+    # 遅延置換子
+    [MatchEvaluator] $evalLateReplacer = {
+        param([Match] $match)
+        [string] $result = ''
+        switch ($match.Groups[1].Value) {
+            'paragraph' {
+                # 段落タイトル
+                $result = $this.dictionaryParagraph[$match.Groups[2].Value]
+            }
+        }
+        return $result
+    }
+
+    # 遅延置換リスト
+    [List[object]] $listLateReplace =
+        (New-Object -TypeName 'System.Collections.Generic.LinkedList[object]')
 
     DocumentWriter($bookTemplate, $bookDocument, [string] $templateName) {
         # コピー元のテンプレートを取得
@@ -172,6 +192,11 @@ class DocumentWriter {
                 $replaced = $this.regexVarExp.Replace($text, $this.evalVarReplacer)
                 if ($text -ne $replaced) {
                     $cell.Value = $replaced
+
+                    # 遅延置換が必要か
+                    if ($this.regexLateRep.IsMatch($replaced)) {
+                        $this.listLateReplace.Add($cell)
+                    }
                 }
 
                 # 次のセル
@@ -216,6 +241,20 @@ class DocumentWriter {
             # テンプレート側の行位置加算
             $this.lineTemplate += $lines
         }
+    }
+
+    # ファイナライズ
+    [void] finalize() {
+        # 遅延置換処理
+        foreach ($cell in $this.listLateReplace) {
+            $text = $cell.Text
+            $replaced = $this.regexLateRep.Replace($text, $this.evalLateReplacer)
+            if ($text -ne $replaced) {
+                $cell.Value = $replaced
+            }
+        }
+
+        $this.listLateReplace.Clear()
     }
 
     #endregion
