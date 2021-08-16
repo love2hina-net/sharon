@@ -100,15 +100,15 @@ class ControlStatement : ControlHolder {
     }
 
     [void] Output([DocumentWriter] $docWriter, $target) {
-        $this._beginTransaction($docWriter)
+        $this._beginTransaction($docWriter, $target)
         $this._commitTransaction($docWriter)
     }
 
     #region ステートメントユーティリティー
 
     # トランザクションの開始
-    hidden [void] _beginTransaction([DocumentWriter] $docWriter) {
-        $docWriter.beginTransaction($this.row, $this.length)
+    hidden [void] _beginTransaction([DocumentWriter] $docWriter, $target) {
+        $docWriter.beginTransaction($this.row, $this.length, $target)
     }
 
     # トランザクションのコミット
@@ -202,7 +202,7 @@ class CodesControl : ControlStatement {
     }
 
     [void] Output([DocumentWriter] $docWriter, $target) {
-        $this._beginTransaction($docWriter)
+        $this._beginTransaction($docWriter, $target)
 
         $nodes = $target.node.Evaluate('code/node()')
 
@@ -244,7 +244,7 @@ class DescriptionControl : ControlStatement {
     }
 
     [void] Output([DocumentWriter] $docWriter, $target) {
-        $this._beginTransaction($docWriter)
+        $this._beginTransaction($docWriter, $target)
 
         # 単純出力
         $this._appendHeader($docWriter, $target)
@@ -264,7 +264,7 @@ class ConditionControl : ControlStatement {
     }
 
     [void] Output([DocumentWriter] $docWriter, $target) {
-        $this._beginTransaction($docWriter)
+        $this._beginTransaction($docWriter, $target)
 
         $this._appendHeader($docWriter, $target)
 
@@ -293,7 +293,7 @@ class IterationControl : ControlStatement {
     }
 
     [void] Output([DocumentWriter] $docWriter, $target) {
-        $this._beginTransaction($docWriter)
+        $this._beginTransaction($docWriter, $target)
 
         $this._appendHeader($docWriter, $target)
 

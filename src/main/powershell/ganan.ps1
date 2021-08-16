@@ -215,17 +215,12 @@ class GananApplication {
                 $docWriter = [DocumentWriter]::new($this.bookTemplate, $this.bookDocument, $entry.name)
 
                 foreach ($control in $entry.controls) {
-                    # 制御文までを出力
-                    $docWriter.outputPassThrough(($control.row - 1), $target)
-
                     # 制御文出力処理
                     $control.Output($docWriter, $target)
                 }
 
-                # 残りを出力
-                $docWriter.outputPassThrough($global:config.searchLines, $target)
                 # ファイナライズ
-                $docWriter.finalize()
+                $docWriter.finalize($target)
 
                 # 子シートの出力
                 $this.enumEntries($target, $entry.entries)

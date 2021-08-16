@@ -78,7 +78,7 @@ class DocumentWriter {
     #region テンプレート出力
 
     # トランザクションの開始
-    [void] beginTransaction([long] $lineStart, [long] $lineLength) {
+    [void] beginTransaction([long] $lineStart, [long] $lineLength, $target) {
         [TransactionRange] $range = $null
 
         # 開始チェック
@@ -100,6 +100,10 @@ class DocumentWriter {
                         + "指定終了行:$($lineStart + $lineLength - 1), 終了行:$($range.row + $range.length - 1)"))
             }
         }
+        else {
+            # 初回時は直前行までを出力確定する
+            $this._outputPassThrough($lineStart - 1, $target)
+        }
 
         $range = [TransactionRange]::new()
         $range.row = $lineStart
@@ -114,7 +118,7 @@ class DocumentWriter {
         # 空となった場合
         if ($this.stackTransaction.Count -eq 0) {
             # 確定させる
-            $this.outputSkip($range.row + $range.length - 1)
+            $this._outputSkip($range.row + $range.length - 1)
         }
     }
 
@@ -217,7 +221,7 @@ class DocumentWriter {
     }
 
     # テンプレートのスルー出力
-    [void] outputPassThrough([long] $lineOutput, $target) {
+    hidden [void] _outputPassThrough([long] $lineOutput, $target) {
         $lines = $lineOutput - $this.lineTemplate
 
         if ($lines -ge 1) {
@@ -229,7 +233,7 @@ class DocumentWriter {
     }
 
     # テンプレートのスキップ出力
-    [void] outputSkip([long] $lineOutput) {
+    hidden [void] _outputSkip([long] $lineOutput) {
         $lines = $lineOutput - $this.lineTemplate
 
         if ($lines -ge 1) {
@@ -244,7 +248,11 @@ class DocumentWriter {
     }
 
     # ファイナライズ
-    [void] finalize() {
+    [void] finalize($target) {
+
+        # 残りを出力
+        $this._outputPassThrough($global:config.searchLines, $target)
+
         # 遅延置換処理
         foreach ($cell in $this.listLateReplace) {
             $text = $cell.Text
