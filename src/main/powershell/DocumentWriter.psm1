@@ -72,13 +72,13 @@ class DocumentWriter {
         $this.sheetDocument = $bookDocument.WorkSheets.Item($bookDocument.WorkSheets.Count)
 
         # 項番に初期値を設定
-        $this.pushParagraph()
+        $this.PushParagraph()
     }
 
     #region テンプレート出力
 
     # トランザクションの開始
-    [void] beginTransaction([long] $lineStart, [long] $lineLength, $target) {
+    [void] BeginTransaction([long] $lineStart, [long] $lineLength, $target) {
         [TransactionRange] $range = $null
 
         # 開始チェック
@@ -102,7 +102,7 @@ class DocumentWriter {
         }
         else {
             # 初回時は直前行までを出力確定する
-            $this._outputPassThrough($lineStart - 1, $target)
+            $this._OutputPassThrough($lineStart - 1, $target)
         }
 
         $range = [TransactionRange]::new()
@@ -112,13 +112,13 @@ class DocumentWriter {
     }
 
     # コミット
-    [void] commitTransaction() {
+    [void] CommitTransaction() {
         [TransactionRange] $range = $this.stackTransaction.Pop()
 
         # 空となった場合
         if ($this.stackTransaction.Count -eq 0) {
             # 確定させる
-            $this._outputSkip($range.row + $range.length - 1)
+            $this._OutputSkip($range.row + $range.length - 1)
         }
     }
 
@@ -127,7 +127,7 @@ class DocumentWriter {
     #   テンプレート側行位置
     # .RETURN
     #   $sheetDocument上での該当行位置
-    [long] getTemplateRowOnDocument([long] $lineStart) {
+    [long] GetTemplateRowOnDocument([long] $lineStart) {
         [long] $offset = 0
 
         $offset = $lineStart - $this.lineTemplate - 1
@@ -140,14 +140,14 @@ class DocumentWriter {
     }
 
     # トランザクション中のテンプレート行位置を取得
-    [long] getTemplateRowOnDocument() {
+    [long] GetTemplateRowOnDocument() {
         [TransactionRange] $range = $null
 
         return if ($this.stackTransaction.TryPeek([ref]$range)) {
-            $this.getTemplateRowOnDocument($range.row)
+            $this.GetTemplateRowOnDocument($range.row)
         }
         else {
-            $this.getTemplateRowOnDocument($this.lineDocument + 1)
+            $this.GetTemplateRowOnDocument($this.lineDocument + 1)
         }
     }
 
@@ -158,25 +158,25 @@ class DocumentWriter {
     #   行数
     # .PARAM target
     #   出力置換対象
-    [void] append([long] $lineStart, [long] $lineLength, $target) {
+    [void] Append([long] $lineStart, [long] $lineLength, $target) {
 
         if ($lineLength -le 0) {
             throw (New-Object -TypeName 'System.ArgumentException' `
                 -ArgumentList ("出力指定行数が1未満です。指定行数:$lineLength"))
         }
 
-        [long] $lineDocumentStart = $this.getTemplateRowOnDocument($lineStart)
+        [long] $lineDocumentStart = $this.GetTemplateRowOnDocument($lineStart)
 
         # 挿入
         [void] $this.sheetDocument.Rows("$($lineDocumentStart):$($lineDocumentStart + $lineLength - 1)").Copy()
         [void] $this.sheetDocument.Rows("$($this.lineDocument + 1)").Insert($global:const.xlShiftDown)
 
         # 出力置換処理
-        $this._translateLines($lineLength, $target)
+        $this._TranslateLines($lineLength, $target)
     }
 
     # 出力置換処理
-    hidden [void] _translateLines([long] $lineLength, $target) {
+    hidden [void] _TranslateLines([long] $lineLength, $target) {
 
         if ($lineLength -le 0) {
             throw (New-Object -TypeName 'System.ArgumentException' `
@@ -221,11 +221,11 @@ class DocumentWriter {
     }
 
     # テンプレートのスルー出力
-    hidden [void] _outputPassThrough([long] $lineOutput, $target) {
+    hidden [void] _OutputPassThrough([long] $lineOutput, $target) {
         $lines = $lineOutput - $this.lineTemplate
 
         if ($lines -ge 1) {
-            $this._translateLines($lines, $target)
+            $this._TranslateLines($lines, $target)
 
             # テンプレート出力位置
             $this.lineTemplate += $lines
@@ -233,7 +233,7 @@ class DocumentWriter {
     }
 
     # テンプレートのスキップ出力
-    hidden [void] _outputSkip([long] $lineOutput) {
+    hidden [void] _OutputSkip([long] $lineOutput) {
         $lines = $lineOutput - $this.lineTemplate
 
         if ($lines -ge 1) {
@@ -248,10 +248,10 @@ class DocumentWriter {
     }
 
     # ファイナライズ
-    [void] finalize($target) {
+    [void] Finalize($target) {
 
         # 残りを出力
-        $this._outputPassThrough($global:config.searchLines, $target)
+        $this._OutputPassThrough($global:config.searchLines, $target)
 
         # 遅延置換処理
         foreach ($cell in $this.listLateReplace) {
@@ -269,7 +269,7 @@ class DocumentWriter {
 
     #region 段落番号
 
-    [string] getCurrentParagraphNumber() {
+    [string] GetCurrentParagraphNumber() {
         [System.Text.StringBuilder] $strNumber = [System.Text.StringBuilder]''
 
         foreach ($i in $this.stackParagraph) {
@@ -282,24 +282,24 @@ class DocumentWriter {
         return $strNumber.ToString()
     }
 
-    [string] incrementParagraph([string] $title) {
+    [string] IncrementParagraph([string] $title) {
         [int] $number = $this.stackParagraph.Pop()
-        return $this._pushParagraph((++$number), $title)
+        return $this._PushParagraph((++$number), $title)
     }
 
-    [void] pushParagraph() {
+    [void] PushParagraph() {
         $this.stackParagraph.Push(0)
     }
 
-    hidden [string] _pushParagraph([int] $number, [string] $title) {
+    hidden [string] _PushParagraph([int] $number, [string] $title) {
         $this.stackParagraph.Push($number)
-        [string] $result = $this.getCurrentParagraphNumber()
+        [string] $result = $this.GetCurrentParagraphNumber()
         # 項目の登録
         $this.dictionaryParagraph.Add($result, $title)
         return $result
     }
 
-    [void] popParagraph() {
+    [void] PopParagraph() {
         $this.stackParagraph.Pop()
     }
 

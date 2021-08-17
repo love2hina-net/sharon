@@ -47,7 +47,7 @@ class GananApplication {
     # XPath
     [System.Xml.XPath.XPathNavigator] $xpath
 
-    [void] test() {
+    [void] Test() {
         $this.excel.Visible = $true
 
         $projectRoot = (Convert-Path "$PSScriptRoot\\..\\..\\..")
@@ -56,10 +56,10 @@ class GananApplication {
         $this.xpath = $this.xml.CreateNavigator()
 
         $this.bookTemplate = $this.excel.Workbooks.Open("$projectRoot\\template\\test.xlsm", 0, $true)
-        $this.parseTemplate()
+        $this.ParseTemplate()
 
         $this.bookDocument = $this.excel.Workbooks.Add($global:const.xlWorksheet)
-        $this.makeDocument()
+        $this.MakeDocument()
 
         $this.bookTemplate.Close($false)
         #$this.excel.Quit()
@@ -67,8 +67,8 @@ class GananApplication {
     }
 
     # 制御文解析
-    [void] parseTemplate() {
-        Write-Debug '[parseTemplate] begin template parsing...'
+    [void] ParseTemplate() {
+        Write-Debug '[ParseTemplate] begin template parsing...'
 
         [SheetFormat] $parSheetFmt = $null # 親シート
 
@@ -76,7 +76,7 @@ class GananApplication {
             if ($sheet.Type -eq $global:const.xlWorksheet) {
                 # 通常のシートの場合
                 $curSheetFmt = [SheetFormat]::new($sheet.Name)
-                Write-Debug "[parseTemplate] parsing sheet: $($curSheetFmt.name)"
+                Write-Debug "[ParseTemplate] parsing sheet: $($curSheetFmt.name)"
 
                 # 制御文スタック
                 $stackControl = (New-Object -TypeName 'System.Collections.Generic.Stack[ControlHolder]')
@@ -86,7 +86,7 @@ class GananApplication {
                 foreach ($cell in $sheet.Range("A1:A$($global:config.searchLines)").Cells) {
                     [Match] $match = [Regex]::Match($cell.Text, '\{#(\w+)(?:\s+(\S+))*\}')
                     if ($match.Success) {
-                        Write-Verbose "[parseTemplate] found control statement: $($match.Value)"
+                        Write-Verbose "[ParseTemplate] found control statement: $($match.Value)"
 
                         # パラメーター展開
                         [string[]] $params = @()
@@ -115,6 +115,9 @@ class GananApplication {
                                     'description' {
                                         $control = [DescriptionControl]::new($params, $cell)
                                     }
+                                    'assignment' {
+                                        $control = [AssignmentControl]::new($params, $cell)
+                                    }
                                     'condition' {
                                         $control = [ConditionControl]::new($params, $cell)
                                     }
@@ -134,7 +137,7 @@ class GananApplication {
                                 $stackControl.Push($control)
                             }
 
-                            Write-Verbose "[parseTemplate] add control statement: $($control.command), Line: $($control.row)"
+                            Write-Verbose "[ParseTemplate] add control statement: $($control.command), Line: $($control.row)"
                         }
                     }
                 }
@@ -173,15 +176,15 @@ class GananApplication {
             }
         }
 
-        Write-Debug '[parseTemplate] end template parsing.'
+        Write-Debug '[ParseTemplate] end template parsing.'
     }
 
-    [void] makeDocument() {
+    [void] MakeDocument() {
 
-        $this.enumEntries($null, $this.format.entries)
+        $this.EnumEntries($null, $this.format.entries)
     }
 
-    [void] enumEntries($parent, $entries) {
+    [void] EnumEntries($parent, $entries) {
 
         if ($null -eq $parent) {
             # ルートを親要素とする
@@ -220,10 +223,10 @@ class GananApplication {
                 }
 
                 # ファイナライズ
-                $docWriter.finalize($target)
+                $docWriter.Finalize($target)
 
                 # 子シートの出力
-                $this.enumEntries($target, $entry.entries)
+                $this.EnumEntries($target, $entry.entries)
             }
         }
     }
@@ -231,4 +234,4 @@ class GananApplication {
 }
 
 $app = [GananApplication]::new()
-$app.test()
+$app.Test()

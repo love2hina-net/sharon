@@ -11,11 +11,15 @@ import com.github.javaparser.ast.modules.*
 import com.github.javaparser.ast.stmt.*
 import com.github.javaparser.ast.type.*
 import com.github.javaparser.ast.visitor.VoidVisitor
-import com.github.javaparser.ast.visitor.VoidVisitorAdapter
 import java.io.File
 import java.lang.Integer.compare
 import java.nio.charset.StandardCharsets.UTF_8
 import java.util.*
+
+private val REGEXP_BLOCK_COMMENT = Regex("^\\s*(?:[/*])\\s*(?<content>\\S|\\S.*\\S)\\s*$")
+private val REGEXP_LINE_COMMENT = Regex("^/\\s*(?<content>\\S|\\S.*\\S)\\s*$")
+private val REGEXP_ASSIGNMENT = Regex("^(?<var>.*\\S)\\s*\\=\\s*(?<value>\\S.*)$")
+private val REGEXP_NEWLINE = Regex("\r\n|\r|\n")
 
 internal class Parser(val file: File) {
 
@@ -78,35 +82,38 @@ internal class Parser(val file: File) {
         override fun visit(n: BlockComment?, arg: Void?) {
             n!!
 
-            val regex = Regex("^\\s*(?:[/*])\\s*(?<content>\\S|\\S.*\\S)?\\s*$")
-
             if (n.content.startsWith('/')) {
-                val lines = n.content.split(Regex("\r\n|\r|\n"))
-                    .stream().map {
-                        val m = regex.find(it)
-                        (m?.groups as MatchNamedGroupCollection?)?.get("content")?.value ?: ""
-                    }.reduce(
-                        StringBuilder(),
-                        { b, s -> (if (b.isEmpty()) b else b.append("\r\n")).append(s) },
-                        { b1, b2 -> (if (b1.isEmpty()) b1 else b1.append("\r\n")).append(b2) }
-                    )
-
-                writer.writeStartElement("comment")
-                writer.writeStrings(lines.toString())
-                writer.writeEndElement()
+                n.content.split(REGEXP_NEWLINE)
+                    .stream().map { REGEXP_BLOCK_COMMENT.find(it) }
+                    .forEach { this.visitLineComment(it) }
             }
         }
 
         override fun visit(n: LineComment?, arg: Void?) {
             n!!
 
-            val regex = Regex("^/\\s*(?<content>\\S|\\S.*\\S)?\\s*$")
-            val match = regex.find(n.content)
+            this.visitLineComment(REGEXP_LINE_COMMENT.find(n.content))
+        }
 
-            if (match != null) {
-                writer.writeStartElement("comment")
-                writer.writeStrings((match.groups as MatchNamedGroupCollection)["content"]!!.value)
-                writer.writeEndElement()
+        private fun visitLineComment(matchContent: MatchResult?) {
+
+            if (matchContent != null) {
+                val content = (matchContent.groups as MatchNamedGroupCollection)["content"]!!.value
+                val matchAssignment = REGEXP_ASSIGNMENT.find(content)
+
+                if (matchAssignment != null) {
+                    // 代入式
+                    val groupsAssign = (matchAssignment.groups as MatchNamedGroupCollection)
+                    writer.writeEmptyElement("assignment")
+                    writer.writeAttribute("var", groupsAssign["var"]!!.value)
+                    writer.writeAttribute("value", groupsAssign["value"]!!.value)
+                }
+                else {
+                    // 処理記述
+                    writer.writeStartElement("description")
+                    writer.writeStrings(content)
+                    writer.writeEndElement()
+                }
             }
         }
 

@@ -2,6 +2,8 @@
 using module '.\TargetEnumerator.psm1'
 using module '.\DocumentWriter.psm1'
 
+using namespace System.Collections.Generic
+
 # 制御文構造保持
 class ControlHolder {
 
@@ -100,35 +102,35 @@ class ControlStatement : ControlHolder {
     }
 
     [void] Output([DocumentWriter] $docWriter, $target) {
-        $this._beginTransaction($docWriter, $target)
-        $this._commitTransaction($docWriter)
+        $this._BeginTransaction($docWriter, $target)
+        $this._CommitTransaction($docWriter)
     }
 
     #region ステートメントユーティリティー
 
     # トランザクションの開始
-    hidden [void] _beginTransaction([DocumentWriter] $docWriter, $target) {
-        $docWriter.beginTransaction($this.row, $this.length, $target)
+    hidden [void] _BeginTransaction([DocumentWriter] $docWriter, $target) {
+        $docWriter.BeginTransaction($this.row, $this.length, $target)
     }
 
     # トランザクションのコミット
-    hidden [void] _commitTransaction([DocumentWriter] $docWriter) {
-        $docWriter.commitTransaction()
+    hidden [void] _CommitTransaction([DocumentWriter] $docWriter) {
+        $docWriter.CommitTransaction()
     }
 
-    hidden [void] _appendHeader([DocumentWriter] $docWriter, $target) {
+    hidden [void] _AppendHeader([DocumentWriter] $docWriter, $target) {
         if ($this.headerLength -gt 0) {
-            $docWriter.append($this.row + 1, $this.headerLength, $target)
+            $docWriter.Append($this.row + 1, $this.headerLength, $target)
         }
     }
 
     # 挿入
-    hidden [void] _appendBody([DocumentWriter] $docWriter, $target) {
+    hidden [void] _AppendBody([DocumentWriter] $docWriter, $target) {
         if ($this.IsNested()) {
             # 開始と終了を除く
             $appendLength = $this.length - $this.headerLength - $this.footerLength - 2
             if ($appendLength -gt 0) {
-                $docWriter.append($this.row + $this.headerLength + 1, $appendLength, $target)
+                $docWriter.Append($this.row + $this.headerLength + 1, $appendLength, $target)
             }
         }
         else {
@@ -137,9 +139,9 @@ class ControlStatement : ControlHolder {
         }
     }
 
-    hidden [void] _appendFooter([DocumentWriter] $docWriter, $target) {
+    hidden [void] _AppendFooter([DocumentWriter] $docWriter, $target) {
         if ($this.footerLength -gt 0) {
-            $docWriter.append(
+            $docWriter.Append(
                 $this.row + $this.length - $this.footerLength - 1,
                 $this.footerLength,
                 $target)
@@ -167,6 +169,8 @@ class CodesControl : ControlStatement {
 
     # ロジック説明制御文
     [DescriptionControl] $descCtrl
+    # 代入式制御文
+    [AssignmentControl] $assignCtrl
     # 条件制御文
     [ConditionControl] $condCtrl
 
@@ -184,6 +188,9 @@ class CodesControl : ControlStatement {
                 { $_ -is [DescriptionControl] } {
                     $this.descCtrl = $control
                 }
+                { $_ -is [AssignmentControl] } {
+                    $this.assignCtrl = $control
+                }
                 { $_ -is [ConditionControl] } {
                     $this.condCtrl = $control
                 }
@@ -195,6 +202,10 @@ class CodesControl : ControlStatement {
             throw (New-Object -TypeName 'System.InvalidOperationException' `
                 -ArgumentList ('コード制御文(codes)中に記述制御文(description)が未定義です。'))
         }
+        if ($null -eq $this.assignCtrl) {
+            throw (New-Object -TypeName 'System.InvalidOperationException' `
+                -ArgumentList ('コード制御文(codes)中に代入式制御文(assignment)が未定義です。'))
+        }
         if ($null -eq $this.condCtrl) {
             throw (New-Object -TypeName 'System.InvalidOperationException' `
                 -ArgumentList ('コード制御文(codes)中に条件制御文(condition)が未定義です。'))
@@ -202,36 +213,60 @@ class CodesControl : ControlStatement {
     }
 
     [void] Output([DocumentWriter] $docWriter, $target) {
-        $this._beginTransaction($docWriter, $target)
+        $this._BeginTransaction($docWriter, $target)
 
         $nodes = $target.node.Evaluate('code/node()')
+
+        # 代入式を纏める
+        [List[AssignmentTargetInfo]] $listAssignment =
+            (New-Object -TypeName 'System.Collections.Generic.LinkedList[AssignmentTargetInfo]')
 
         foreach ($node in $nodes) {
             # 登場する要素によって出力を分ける
             switch ($node.Name) {
-                'comment' {
+                'description' {
+                    $this._OutputAssign($docWriter, $listAssignment)
+
                     # 処理記述
                     $this.descCtrl.Output($docWriter, ([DescriptionTargetInfo]::new($node, $docWriter)))
                 }
+                'assignment' {
+                    # 代入式
+                    $listAssignment.Add([AssignmentTargetInfo]::new($node))
+                }
                 'condition' {
-                    $paraNumber = $docWriter.getCurrentParagraphNumber()
+                    $this._OutputAssign($docWriter, $listAssignment)
+
+                    $paraNumber = $docWriter.GetCurrentParagraphNumber()
                     # 条件表
                     $cases = [ConditionTargetEnumerator]::new($node, $paraNumber)
                     $this.condCtrl.Output($docWriter, $cases)
                     # 記述部
-                    $docWriter.pushParagraph()
+                    $docWriter.PushParagraph()
                     # TargetEnumeratorはリセットできないので、作り直し
                     $cases = [ConditionTargetEnumerator]::new($node, $paraNumber)
                     foreach ($case in $cases) {
                         # 再帰呼び出し
                         $this.Output($docWriter, $case)
                     }
-                    $docWriter.popParagraph()
+                    $docWriter.PopParagraph()
                 }
             }
         }
 
-        $this._commitTransaction($docWriter)
+        # 未出力分を処理
+        $this._OutputAssign($docWriter, $listAssignment)
+
+        $this._CommitTransaction($docWriter)
+    }
+
+    hidden [void] _OutputAssign([DocumentWriter] $docWriter, [List[AssignmentTargetInfo]] $listAssignment) {
+
+        if ($listAssignment.Count -gt 0) {
+            # 条件表の出力
+            $this.assignCtrl.Output($docWriter, $listAssignment)
+        }
+        $listAssignment.Clear()
     }
 
 }
@@ -244,14 +279,41 @@ class DescriptionControl : ControlStatement {
     }
 
     [void] Output([DocumentWriter] $docWriter, $target) {
-        $this._beginTransaction($docWriter, $target)
+        $this._BeginTransaction($docWriter, $target)
 
         # 単純出力
-        $this._appendHeader($docWriter, $target)
-        $this._appendBody($docWriter, $target)
-        $this._appendFooter($docWriter, $target)
+        $this._AppendHeader($docWriter, $target)
+        $this._AppendBody($docWriter, $target)
+        $this._AppendFooter($docWriter, $target)
 
-        $this._commitTransaction($docWriter)
+        $this._CommitTransaction($docWriter)
+    }
+
+}
+
+# 代入式制御文
+class AssignmentControl : ControlStatement {
+
+    AssignmentControl([string[]] $params, $cell) : base($params, $cell) {
+        $this.Open('assignment')
+    }
+
+    [void] Output([DocumentWriter] $docWriter, $target) {
+        $this._BeginTransaction($docWriter, $target)
+
+        $this._AppendHeader($docWriter, $target)
+
+        [int] $index = 0
+
+        # 条件を繰り返す
+        foreach ($i in $target) {
+            $i.index = ++$index
+            $this._AppendBody($docWriter, $i)
+        }
+
+        $this._AppendFooter($docWriter, $target)
+
+        $this._CommitTransaction($docWriter)
     }
 
 }
@@ -264,18 +326,18 @@ class ConditionControl : ControlStatement {
     }
 
     [void] Output([DocumentWriter] $docWriter, $target) {
-        $this._beginTransaction($docWriter, $target)
+        $this._BeginTransaction($docWriter, $target)
 
-        $this._appendHeader($docWriter, $target)
+        $this._AppendHeader($docWriter, $target)
 
         # 条件を繰り返す
         foreach ($i in $target) {
-            $this._appendBody($docWriter, $i)
+            $this._AppendBody($docWriter, $i)
         }
 
-        $this._appendFooter($docWriter, $target)
+        $this._AppendFooter($docWriter, $target)
 
-        $this._commitTransaction($docWriter)
+        $this._CommitTransaction($docWriter)
     }
 
 }
@@ -293,20 +355,20 @@ class IterationControl : ControlStatement {
     }
 
     [void] Output([DocumentWriter] $docWriter, $target) {
-        $this._beginTransaction($docWriter, $target)
+        $this._BeginTransaction($docWriter, $target)
 
-        $this._appendHeader($docWriter, $target)
+        $this._AppendHeader($docWriter, $target)
 
         # 列挙対象の取得
         $collections = (Invoke-Expression ('$target.' + "$($this.target)"))
         foreach ($i in $collections) {
             # 繰り返し出力する
-            $this._appendBody($docWriter, $i)
+            $this._AppendBody($docWriter, $i)
         }
 
-        $this._appendFooter($docWriter, $target)
+        $this._AppendFooter($docWriter, $target)
 
-        $this._commitTransaction($docWriter)
+        $this._CommitTransaction($docWriter)
     }
 
 }

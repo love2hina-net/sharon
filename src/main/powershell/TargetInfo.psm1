@@ -106,12 +106,29 @@ class DescriptionTargetInfo : TargetInfo {
         if ($desc -match '^#\s?(\S+)') {
             # 段落番号を設定する
             $title = $Matches[1]
-            $this.number = $docWriter.incrementParagraph($title)
+            $this.number = $docWriter.IncrementParagraph($title)
             $this.description = $title
         }
         else {
             $this.description = $node.Evaluate('text()')
         }
+    }
+
+}
+
+class AssignmentTargetInfo : TargetInfo {
+
+    # 項目番号
+    [string] $index
+    # 変数名
+    [string] $var
+    # 設定値
+    [string] $value
+
+    AssignmentTargetInfo([XPathNavigator]$node) : base($node) {
+
+        $this.var = $node.Evaluate('@var')
+        $this.value = $node.Evaluate('@value')
     }
 
 }
@@ -132,7 +149,7 @@ class ConditionTargetInfo : TargetInfo {
         $this.index = $index
         $this.number = [string]::Format('{0}.{1}', $number, $index)
         $this.title = '{*paragraph ' + $this.number + '}'
-        $this.description = $node.Evaluate('comment/text()')
+        $this.description = $node.Evaluate('description/text()')
     }
 
 }

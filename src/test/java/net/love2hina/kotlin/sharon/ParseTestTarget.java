@@ -42,11 +42,14 @@ public class ParseTestTarget extends Object implements java.io.Serializable {
 
         /// # なにか
         /// 記述文
+        /// 変数A = "365"
+        /// 変数B = "FG"
 
         /*/
          * ブロックコメント
          *
          * あいう
+         * 変数C = 54
          * かきく
          */
 
