@@ -156,9 +156,19 @@ class DocumentWriter {
     #   テンプレート側行位置
     # .PARAM lineLength
     #   行数
+    # .PARAM shiftStep
+    #   シフトステップ
+    # .PARAM shiftLimit
+    #   シフト上限
+    # .PARAM shiftColumn
+    #   シフト開始列
+    # .PARAM shiftWidth
+    #   シフト列幅
     # .PARAM target
     #   出力置換対象
-    [void] Append([long] $lineStart, [long] $lineLength, $target) {
+    [void] Append([long] $lineStart, [long] $lineLength,
+        [long] $shiftStep, [long] $shiftLimit, [long] $shiftColumn, [long] $shiftWidth,
+        $target) {
 
         if ($lineLength -le 0) {
             throw (New-Object -TypeName 'System.ArgumentException' `
@@ -170,6 +180,40 @@ class DocumentWriter {
         # 挿入
         [void] $this.sheetDocument.Rows("$($lineDocumentStart):$($lineDocumentStart + $lineLength - 1)").Copy()
         [void] $this.sheetDocument.Rows("$($this.lineDocument + 1)").Insert($global:const.xlShiftDown)
+
+        # シフト処理
+        if ($shiftStep -gt 0) {
+            [long] $offset = ($this.stackParagraph.Count - 1) * $shiftStep
+            if ($shiftLimit -gt 0) {
+                $offset = [System.Math]::Min($offset, $shiftLimit)
+            }
+
+            if ($offset -gt 0) {
+                [object] $shiftSrcRange = $null
+                [object] $shiftDestRange = $null
+
+                if (($shiftColumn -gt 0) -and ($shiftWidth -gt 0)) {
+                    # 一部のシフト
+                    $shiftSrcRange = $this.sheetDocument.Range(
+                        $this.sheetDocument.Cells($this.lineDocument + 1, $shiftColumn),
+                        $this.sheetDocument.Cells($this.lineDocument + $lineLength, $shiftColumn + $shiftWidth - 1))
+                    $shiftDestRange = $this.sheetDocument.Range(
+                        $this.sheetDocument.Cells($this.lineDocument + 1, $shiftColumn + $offset),
+                        $this.sheetDocument.Cells($this.lineDocument + $lineLength, $shiftColumn + $shiftWidth + $offset - 1))
+                }
+                else {
+                    # 行全体のシフト
+                    $shiftSrcRange = $this.sheetDocument.Range(
+                        $this.sheetDocument.Cells($this.lineDocument + 1, 1),
+                        $this.sheetDocument.Cells($this.lineDocument + $lineLength, $global:config.searchColumns))
+                    $shiftDestRange = $this.sheetDocument.Range(
+                        $this.sheetDocument.Cells($this.lineDocument + 1, $offset + 1),
+                        $this.sheetDocument.Cells($this.lineDocument + $lineLength, $offset + $global:config.searchColumns))
+                }
+
+                $shiftSrcRange.Cut($shiftDestRange)
+            }
+        }
 
         # 出力置換処理
         $this._TranslateLines($lineLength, $target)

@@ -73,6 +73,14 @@ class ControlStatement : ControlHolder {
     [long] $headerLength = 0
     # フッター行数
     [long] $footerLength = 0
+    # シフトステップ
+    [long] $shiftStep = 0
+    # シフト上限
+    [long] $shiftLimit = 0
+    # シフト開始列
+    [long] $shiftColumn = 0
+    # シフト列幅
+    [long] $shiftWidth = 0
 
     ControlStatement([string[]] $params, $cell) {
         $this.command = $params[1]
@@ -80,10 +88,16 @@ class ControlStatement : ControlHolder {
 
         # 拡張パラメーター
         for ($i = 2; $i -lt $params.Length; ++$i) {
-            if ($params[$i] -match '^(\w+):(\d+)$') {
-                switch ($Matches[1]) {
-                    'header' { $this.headerLength = [long]$Matches[2] }
-                    'footer' { $this.footerLength = [long]$Matches[2] }
+            switch -regex ($params[$i]) {
+                '^header:(\d+)$' { $this.headerLength = [long]$Matches[1] }
+                '^footer:(\d+)$' { $this.footerLength = [long]$Matches[1] }
+                '^shift:(\d+),(\d+)(?:,(\d+),(\d+))?$' {
+                    $this.shiftStep = [long]$Matches[1]
+                    $this.shiftLimit = [long]$Matches[2]
+                    if ($Matches.Count -ge 5) {
+                        $this.shiftColumn = [long]$Matches[3]
+                        $this.shiftWidth = [long]$Matches[4]
+                    }
                 }
             }
         }
@@ -92,6 +106,32 @@ class ControlStatement : ControlHolder {
     [void] Close([string[]] $params, $cell) {
         # 基底処理呼び出し
         ([ControlHolder]$this).Close($params, $cell)
+
+        # 定義値チェック
+        if ($this.headerLength -lt 0) {
+            Write-Warning "[Close] headerLength: $($this.headerLength)"
+            $this.headerLength = 0
+        }
+        if ($this.footerLength -lt 0) {
+            Write-Warning "[Close] footerLength: $($this.footerLength)"
+            $this.footerLength = 0
+        }
+        if ($this.shiftStep -lt 0) {
+            Write-Warning "[Close] shiftStep: $($this.shiftStep)"
+            $this.shiftStep = 0
+        }
+        if ($this.shiftLimit -lt 0) {
+            Write-Warning "[Close] shiftLimit: $($this.shiftLimit)"
+            $this.shiftLimit = 0
+        }
+        if ($this.shiftColumn -lt 0) {
+            Write-Warning "[Close] shiftColumn: $($this.shiftColumn)"
+            $this.shiftColumn = 0
+        }
+        if ($this.shiftWidth -lt 0) {
+            Write-Warning "[Close] shiftWidth: $($this.shiftWidth)"
+            $this.shiftWidth = 0
+        }
 
         # 行数算出
         $this.length = $cell.Row - $this.row + 1
@@ -120,7 +160,9 @@ class ControlStatement : ControlHolder {
 
     hidden [void] _AppendHeader([DocumentWriter] $docWriter, $target) {
         if ($this.headerLength -gt 0) {
-            $docWriter.Append($this.row + 1, $this.headerLength, $target)
+            $docWriter.Append($this.row + 1, $this.headerLength,
+                $this.shiftStep, $this.shiftLimit, $this.shiftColumn, $this.shiftWidth,
+                $target)
         }
     }
 
@@ -130,7 +172,9 @@ class ControlStatement : ControlHolder {
             # 開始と終了を除く
             $appendLength = $this.length - $this.headerLength - $this.footerLength - 2
             if ($appendLength -gt 0) {
-                $docWriter.Append($this.row + $this.headerLength + 1, $appendLength, $target)
+                $docWriter.Append($this.row + $this.headerLength + 1, $appendLength,
+                    $this.shiftStep, $this.shiftLimit, $this.shiftColumn, $this.shiftWidth,
+                    $target)
             }
         }
         else {
@@ -142,8 +186,8 @@ class ControlStatement : ControlHolder {
     hidden [void] _AppendFooter([DocumentWriter] $docWriter, $target) {
         if ($this.footerLength -gt 0) {
             $docWriter.Append(
-                $this.row + $this.length - $this.footerLength - 1,
-                $this.footerLength,
+                $this.row + $this.length - $this.footerLength - 1, $this.footerLength,
+                $this.shiftStep, $this.shiftLimit, $this.shiftColumn, $this.shiftWidth,
                 $target)
         }
     }
