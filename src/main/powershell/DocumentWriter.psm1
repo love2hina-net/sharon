@@ -83,21 +83,20 @@ class DocumentWriter {
 
         # 開始チェック
         if ($lineLength -lt 1) {
-            throw (New-Object -TypeName 'System.ArgumentException' -ArgumentList ("行数が不正です。指定行数:$lineLength"))
+            throw (New-Object -TypeName 'System.ArgumentException' -ArgumentList ("$($global:messages.E003001) lineLength:$lineLength"))
         }
         if ($lineStart -lt $this.lineTemplate) {
             throw (New-Object -TypeName 'System.ArgumentException' `
-                -ArgumentList ("既に出力が確定している行に対して、出力を開始できません。指定開始行:$lineStart, 確定行:$($this.lineTemplate)"))
+                -ArgumentList ("$($global:messages.E003002) specified line:$lineStart, decitioned line:$($this.lineTemplate)"))
         }
         if ($this.stackTransaction.TryPeek([ref]$range)) {
             if ($lineStart -lt $range.row) {
                 throw (New-Object -TypeName 'System.ArgumentException' `
-                    -ArgumentList ("既に開始されているトランザクション範囲外の行に対して、出力を開始できません。指定開始行:$lineStart, 開始行:$($range.row)"))
+                    -ArgumentList ("$($global:messages.E003003) specified begin:$lineStart, transaction begin:$($range.row)"))
             }
             if (($lineStart + $lineLength) -gt ($range.row + $range.length)) {
                 throw (New-Object -TypeName 'System.ArgumentException' `
-                    -ArgumentList ('既に開始されているトランザクション範囲外の行に対して、出力を開始できません。' `
-                        + "指定終了行:$($lineStart + $lineLength - 1), 終了行:$($range.row + $range.length - 1)"))
+                    -ArgumentList ("$($global:messages.E003003) specified end:$($lineStart + $lineLength - 1), transaction end:$($range.row + $range.length - 1)"))
             }
         }
         else {
@@ -133,7 +132,7 @@ class DocumentWriter {
         $offset = $lineStart - $this.lineTemplate - 1
         if ($offset -lt 0) {
             throw (New-Object -TypeName 'System.ArgumentException' `
-                -ArgumentList ("既に出力が確定している行には操作できません。指定開始行:$lineStart, 確定行:$($this.lineTemplate)"))
+                -ArgumentList ("$($global:messages.E003004) specified line:$lineStart, decitioned line:$($this.lineTemplate)"))
         }
 
         return $this.lineDocument + $offset + 1
@@ -172,7 +171,7 @@ class DocumentWriter {
 
         if ($lineLength -le 0) {
             throw (New-Object -TypeName 'System.ArgumentException' `
-                -ArgumentList ("出力指定行数が1未満です。指定行数:$lineLength"))
+                -ArgumentList ("$($global:messages.E003005) lineLength:$lineLength"))
         }
 
         [long] $lineDocumentStart = $this.GetTemplateRowOnDocument($lineStart)
@@ -224,7 +223,7 @@ class DocumentWriter {
 
         if ($lineLength -le 0) {
             throw (New-Object -TypeName 'System.ArgumentException' `
-                -ArgumentList ("出力指定行数が1未満です。指定行数:$lineLength"))
+                -ArgumentList ("$($global:messages.E003005) lineLength:$lineLength"))
         }
 
         $rangeLine = $this.sheetDocument.Range(

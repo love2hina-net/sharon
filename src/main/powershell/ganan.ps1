@@ -33,6 +33,10 @@ $global:const.xlShiftDown = -4121
 # xlToRight定数
 $global:const.xlToRight = -4161
 
+# メッセージ定義の読み込み
+& (Join-Path -Path $PSScriptRoot -ChildPath '.\Messages.ps1' -Resolve)
+Import-LocalizedData -BindingVariable 'messages' -FileName 'Messages'
+
 class GananApplication {
     # テンプレートフォーマット情報
     $format = @{ entries = @() }
@@ -171,7 +175,7 @@ class GananApplication {
 
                 # スタックチェック
                 if ($stackControl.Pop() -ne $curSheetFmt) {
-                    throw (New-Object -TypeName 'System.InvalidOperationException' -ArgumentList ('制御文が正しく閉じられていません。'))
+                    throw (New-Object -TypeName 'System.InvalidOperationException' -ArgumentList ($global:messages.E001001))
                 }
             }
         }

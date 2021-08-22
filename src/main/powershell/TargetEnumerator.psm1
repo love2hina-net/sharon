@@ -31,7 +31,7 @@ class TargetEnumerator : System.Collections.IEnumerable, System.Collections.IEnu
             $this._query = $info.node.Evaluate($tag)
         }
         else {
-            throw (New-Object -TypeName 'System.ArgumentException' -ArgumentList ("検索起点が不明です。"))
+            throw (New-Object -TypeName 'System.ArgumentException' -ArgumentList ($global:messages.E004001))
         }
     }
 

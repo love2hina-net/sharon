@@ -15,7 +15,7 @@ class ControlHolder {
 
     [void] Open([string] $token) {
         if ($this.IsNested()) {
-            throw (New-Object -TypeName 'System.InvalidOperationException' -ArgumentList ('既にOpenされている制御文に重複してOpenは実行できません。'))
+            throw (New-Object -TypeName 'System.InvalidOperationException' -ArgumentList ($global:messages.E002001))
         }
 
         $this.token = $token
@@ -26,11 +26,11 @@ class ControlHolder {
             # クローズトークンチェック
             if ($params[2] -ne $this.token) {
                 throw (New-Object -TypeName 'System.InvalidOperationException' `
-                    -ArgumentList ("制御文の組み合わせが正しくありません。指定: $($params[2]), 想定: $($this.token)"))
+                    -ArgumentList ("$($global:messages.E002002) actual: $($params[2]), assumed: $($this.token)"))
             }
         }
         else {
-            throw (New-Object -TypeName 'System.InvalidOperationException' -ArgumentList ('ネストしない制御文に対するCloseは無効です。'))
+            throw (New-Object -TypeName 'System.InvalidOperationException' -ArgumentList ($global:messages.E002003))
         }
     }
 
@@ -109,27 +109,27 @@ class ControlStatement : ControlHolder {
 
         # 定義値チェック
         if ($this.headerLength -lt 0) {
-            Write-Warning "[Close] headerLength: $($this.headerLength)"
+            Write-Warning "$($global:messages.W002001) headerLength: $($this.headerLength)"
             $this.headerLength = 0
         }
         if ($this.footerLength -lt 0) {
-            Write-Warning "[Close] footerLength: $($this.footerLength)"
+            Write-Warning "$($global:messages.W002001) footerLength: $($this.footerLength)"
             $this.footerLength = 0
         }
         if ($this.shiftStep -lt 0) {
-            Write-Warning "[Close] shiftStep: $($this.shiftStep)"
+            Write-Warning "$($global:messages.W002001) shiftStep: $($this.shiftStep)"
             $this.shiftStep = 0
         }
         if ($this.shiftLimit -lt 0) {
-            Write-Warning "[Close] shiftLimit: $($this.shiftLimit)"
+            Write-Warning "$($global:messages.W002001) shiftLimit: $($this.shiftLimit)"
             $this.shiftLimit = 0
         }
         if ($this.shiftColumn -lt 0) {
-            Write-Warning "[Close] shiftColumn: $($this.shiftColumn)"
+            Write-Warning "$($global:messages.W002001) shiftColumn: $($this.shiftColumn)"
             $this.shiftColumn = 0
         }
         if ($this.shiftWidth -lt 0) {
-            Write-Warning "[Close] shiftWidth: $($this.shiftWidth)"
+            Write-Warning "$($global:messages.W002001) shiftWidth: $($this.shiftWidth)"
             $this.shiftWidth = 0
         }
 
@@ -137,7 +137,7 @@ class ControlStatement : ControlHolder {
         $this.length = $cell.Row - $this.row + 1
         if ($this.headerLength + $this.footerLength -gt $this.length) {
             throw (New-Object -TypeName 'System.InvalidOperationException' `
-                -ArgumentList ('ヘッダー／フッター行数が定義済みのブロック行数を超えています。'))
+                -ArgumentList ($global:messages.E002004))
         }
     }
 
@@ -179,7 +179,7 @@ class ControlStatement : ControlHolder {
         }
         else {
             # 出力するものがない
-            throw (New-Object -TypeName 'System.InvalidOperationException' -ArgumentList ('ネストしない制御文に対する出力は無効です。'))
+            throw (New-Object -TypeName 'System.InvalidOperationException' -ArgumentList ($global:messages.E002005))
         }
     }
 
@@ -244,15 +244,15 @@ class CodesControl : ControlStatement {
         # 定義チェック
         if ($null -eq $this.descCtrl) {
             throw (New-Object -TypeName 'System.InvalidOperationException' `
-                -ArgumentList ('コード制御文(codes)中に記述制御文(description)が未定義です。'))
+                -ArgumentList ($global:messages.E002006))
         }
         if ($null -eq $this.assignCtrl) {
             throw (New-Object -TypeName 'System.InvalidOperationException' `
-                -ArgumentList ('コード制御文(codes)中に代入式制御文(assignment)が未定義です。'))
+                -ArgumentList ($global:messages.E002007))
         }
         if ($null -eq $this.condCtrl) {
             throw (New-Object -TypeName 'System.InvalidOperationException' `
-                -ArgumentList ('コード制御文(codes)中に条件制御文(condition)が未定義です。'))
+                -ArgumentList ($global:messages.E002008))
         }
     }
 
