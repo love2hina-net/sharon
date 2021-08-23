@@ -1,4 +1,4 @@
-module Sharon.main {
+module sharon.main {
     requires java.base;
     requires java.xml;
     requires kotlin.stdlib;
