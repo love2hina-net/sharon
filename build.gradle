@@ -15,6 +15,14 @@ compileKotlin {
     kotlinOptions.jvmTarget = "11"
 }
 
+compileTestJava {
+    options.release = 11
+}
+
+compileTestKotlin {
+    kotlinOptions.jvmTarget = "11"
+}
+
 repositories {
     mavenCentral()
 }
@@ -34,4 +42,8 @@ dependencies {
 
 test {
     useJUnitPlatform()
+}
+
+applicationDistribution.from('src/main/powershell') {
+    into 'bin'
 }
