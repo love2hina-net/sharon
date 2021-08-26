@@ -11,15 +11,11 @@ import com.github.javaparser.ast.modules.*
 import com.github.javaparser.ast.stmt.*
 import com.github.javaparser.ast.type.*
 import com.github.javaparser.ast.visitor.VoidVisitor
+import net.love2hina.kotlin.sharon.data.*
 import java.io.File
 import java.lang.Integer.compare
 import java.nio.charset.StandardCharsets.UTF_8
 import java.util.*
-
-private val REGEXP_BLOCK_COMMENT = Regex("^\\s*(?:[/*])\\s*(?<content>\\S|\\S.*\\S)\\s*$")
-private val REGEXP_LINE_COMMENT = Regex("^/\\s*(?<content>\\S|\\S.*\\S)\\s*$")
-private val REGEXP_ASSIGNMENT = Regex("^(?<var>.*\\S)\\s*\\=\\s*(?<value>\\S.*)$")
-private val REGEXP_NEWLINE = Regex("\r\n|\r|\n")
 
 internal class Parser(val file: File) {
 
@@ -98,7 +94,7 @@ internal class Parser(val file: File) {
         private fun visitLineComment(matchContent: MatchResult?) {
 
             if (matchContent != null) {
-                val content = (matchContent.groups as MatchNamedGroupCollection)["content"]!!.value
+                val content = (matchContent.groups as MatchNamedGroupCollection)["content"]?.value ?: ""
                 val matchAssignment = REGEXP_ASSIGNMENT.find(content)
 
                 if (matchAssignment != null) {
@@ -108,7 +104,7 @@ internal class Parser(val file: File) {
                     writer.writeAttribute("var", groupsAssign["var"]!!.value)
                     writer.writeAttribute("value", groupsAssign["value"]!!.value)
                 }
-                else {
+                else if (content.isNotBlank()) {
                     // 処理記述
                     writer.writeStartElement("description")
                     writer.writeStrings(content)
@@ -408,27 +404,104 @@ internal class Parser(val file: File) {
         override fun visit(n: MethodDeclaration?, arg: Void?) {
             n!!
 
+            // メソッド情報
+            val methodInfo = MethodInfo()
+
+            // 実体解析
+            // 明示的なthisパラメータ
+            n.receiverParameter.ifPresent {
+                val name = it.name.asString()
+                methodInfo.parameters[name] = ParameterInfo("", it.type.asString(), name)
+            }
+            // パラメータ
+            n.parameters.forEach {
+                val name = it.name.asString()
+                methodInfo.parameters[name] = ParameterInfo(
+                    getModifier(it.modifiers),
+                    it.type.asString(),
+                    name
+                )
+            }
+            // 戻り値
+            if (!n.type.isVoidType) {
+                methodInfo.result = ReturnInfo(n.type.asString())
+            }
+            // 例外
+            n.thrownExceptions.forEach {
+                val type = it.asString()
+                methodInfo.throws[type] = ThrowsInfo(type)
+            }
+
             writer.writeStartElement("method")
             writer.writeAttribute("modifier", getModifier(n.modifiers))
-            writer.writeAttribute("return", n.type.asString())
             writer.writeAttribute("name", n.name.asString())
+
+            // 定義全体
+            writer.writeStartElement("definition")
+            writer.writeStrings(n.getDeclarationAsString(true, true, true))
+            writer.writeEndElement()
 
             // TODO
             // n.typeParameters.forEach { it.accept(this, arg) }
 
-            // コメント
-            n.comment.ifPresent { it.accept(this, arg) }
+            // コメントの解析
+            n.comment.ifPresent {
+                if (it.isJavadocComment) {
+                    // Javadocコメントから、*を取り除く
+                    val content = it.content.split(REGEXP_NEWLINE)
+                        .stream().map { l ->
+                            val m = REGEXP_BLOCK_COMMENT.find(l)
+                            if (m != null)
+                                (m.groups as MatchNamedGroupCollection)["content"]?.value ?: ""
+                            else l
+                        }
+                        .reduce(StringBuilder(),
+                            { b, l -> b.appendNewLine(l) },
+                            { b1, b2 -> b1.appendNewLine(b2) })
+                        .toString()
+
+                    var index = 0
+                    var name: String? = null
+
+                    // Javadocをパースする
+                    for (match in REGEXP_ANNOTATION.findAll(content)) {
+                        index = pushJavadocComment(content, name, index, match.range, methodInfo)
+                        name = (match.groups as MatchNamedGroupCollection)["s"]!!.value
+                    }
+                    pushJavadocComment(content, name, index, IntRange(content.length, content.length), methodInfo)
+                }
+            }
+
+            // 説明の出力
+            writer.writeStartElement("description")
+            writer.writeStrings(methodInfo.description.toString())
+            writer.writeEndElement()
+            // パラメーターの出力
+            methodInfo.parameters.forEach {
+                writer.writeStartElement("parameter")
+                writer.writeAttribute("modifier", it.value.modifier)
+                writer.writeAttribute("type", it.value.type)
+                writer.writeAttribute("name", it.value.name)
+                writer.writeStrings(it.value.description)
+                writer.writeEndElement()
+            }
+            // 戻り値の出力
+            methodInfo.result?.let {
+                writer.writeStartElement("return")
+                writer.writeAttribute("type", it.type)
+                writer.writeStrings(it.description)
+                writer.writeEndElement()
+            }
+            // 例外の出力
+            methodInfo.throws.forEach {
+                writer.writeStartElement("throws")
+                writer.writeAttribute("type", it.value.type)
+                writer.writeStrings(it.value.description)
+                writer.writeEndElement()
+            }
+
             // アノテーション
             n.annotations.forEach { it.accept(this, arg) }
-
-            // パラメータ
-            // 明示的なthisパラメータ
-            n.receiverParameter.ifPresent { it.accept(this, arg) }
-            // パラメータ
-            n.parameters.forEach { it.accept(this, arg) }
-
-            // throws
-            n.thrownExceptions.forEach { it.accept(this, arg) }
 
             // ステートメント
             n.body.ifPresent {
@@ -440,38 +513,74 @@ internal class Parser(val file: File) {
             writer.writeEndElement()
         }
 
+        private fun pushJavadocComment(content: String, name: String?, start: Int, range: IntRange,
+                                       methodInfo: MethodInfo): Int {
+
+            if (start < range.start) {
+                val value = content.substring(start, range.start).trim()
+
+                when (name) {
+                    "param" -> {
+                        val r = Regex("^(?<name>\\w+)(?:\\s+(?<desc>.*))?$")
+                        val m = r.find(value)
+
+                        if (m != null) {
+                            val groups = (m.groups as MatchNamedGroupCollection)
+
+                            val paramName = groups["name"]!!.value
+                            val paramDesc = groups["desc"]?.value ?: ""
+
+                            val paramInfo = methodInfo.parameters.getOrPut(paramName)
+                                { ParameterInfo("", "", paramName) }
+
+                            paramInfo.description = paramDesc
+                        }
+                    }
+                    "return" -> {
+                        val resultInfo: ReturnInfo = methodInfo.result ?: ReturnInfo()
+
+                        resultInfo.description = value
+                        methodInfo.result = resultInfo
+                    }
+                    "throws" -> {
+                        val r = Regex("^(?<name>\\w+)(?:\\s+(?<desc>.*))?$")
+                        val m = r.find(value)
+
+                        if (m != null) {
+                            val groups = (m.groups as MatchNamedGroupCollection)
+
+                            val expType = groups["name"]!!.value
+                            val expDesc = groups["desc"]?.value ?: ""
+
+                            val throwsInfo = methodInfo.throws.getOrPut(expType)
+                                { ThrowsInfo(expType) }
+
+                            throwsInfo.description = expDesc
+                        }
+                    }
+                    else -> {
+                        methodInfo.description.appendNewLine(value)
+                    }
+                }
+            }
+
+            return range.endInclusive + 1
+        }
+
         /**
          * 明示的なthisパラメータ.
          */
         override fun visit(n: ReceiverParameter?, arg: Void?) {
-            n!!
-
-            writer.writeStartElement("parameter")
-            writer.writeAttribute("type", n.type.asString())
-            writer.writeAttribute("name", n.name.asString())
-
-            // アノテーション
-            n.annotations.forEach { it.accept(this, arg) }
-
-            writer.writeEndElement()
+            // 使われない
+            throw IllegalAccessException()
         }
 
         /**
          * パラメータ.
          */
         override fun visit(n: Parameter?, arg: Void?) {
-            n!!
-
-            writer.writeStartElement("parameter")
-            writer.writeAttribute("modifier", getModifier(n.modifiers))
-            writer.writeAttribute("type", n.type.asString())
-            writer.writeAttribute("name", n.name.asString())
-
-            // アノテーション
-            n.varArgsAnnotations.forEach { it.accept(this, arg) }
-            n.annotations.forEach { it.accept(this, arg) }
-
-            writer.writeEndElement()
+            // 使われない
+            throw IllegalAccessException()
         }
 
         /**
