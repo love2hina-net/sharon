@@ -78,17 +78,87 @@ class MethodTargetInfo : TargetInfo {
     [string] $comment
     # 修飾子
     [string] $modifier
-    # 戻り値型
-    [string] $return
     # 名前
     [string] $name
+    # 定義
+    [string] $definition
+
+    # 引数
+    [ParameterTargetInfo[]] $parameters = @()
+    # 戻り値
+    [ReturnTargetInfo[]] $return = @()
+    # 例外
+    [ThrowsTargetInfo[]] $throws = @()
 
     MethodTargetInfo([XPathNavigator]$node) : base($node) {
 
-        $this.comment = $node.Evaluate('comment/text()')
+        $this.comment = $node.Evaluate('description/text()')
         $this.modifier = $node.Evaluate('@modifier')
-        $this.return = $node.Evaluate('@return')
         $this.name = $node.Evaluate('@name')
+        $this.definition = $node.Evaluate('definition/text()')
+
+        foreach ($i in $node.Evaluate('parameter')) {
+            $this.parameters += [ParameterTargetInfo]::new($i)
+        }
+
+        foreach ($i in $node.Evaluate('return')) {
+            $this.return += [ReturnTargetInfo]::new($i)
+        }
+
+        foreach ($i in $node.Evaluate('throws')) {
+            $this.throws += [ThrowsTargetInfo]::new($i)
+        }
+    }
+
+}
+
+class ParameterTargetInfo: TargetInfo {
+
+    # コメント
+    [string] $comment
+    # 修飾子
+    [string] $modifier
+    # 型名
+    [string] $type
+    # 名前
+    [string] $name
+
+    ParameterTargetInfo([XPathNavigator]$node) : base($node) {
+
+        $this.comment = $node.Evaluate('text()')
+        $this.modifier = $node.Evaluate('@modifier')
+        $this.type = $node.Evaluate('@type')
+        $this.name = $node.Evaluate('@name')
+    }
+
+}
+
+class ReturnTargetInfo: TargetInfo {
+
+    # コメント
+    [string] $comment
+    # 型名
+    [string] $type
+
+    ReturnTargetInfo([XPathNavigator]$node) : base($node) {
+
+        $this.comment = $node.Evaluate('text()')
+        $this.type = $node.Evaluate('@type')
+    }
+
+}
+
+class ThrowsTargetInfo: TargetInfo {
+
+    # コメント
+    [string] $comment
+    # 型名
+    [string] $type
+
+    ThrowsTargetInfo([XPathNavigator]$node) : base($node) {
+
+        $this.comment = $node.Evaluate('text()')
+        $this.type = $node.Evaluate('@type')
     }
 
 }
