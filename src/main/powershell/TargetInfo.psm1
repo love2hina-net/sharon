@@ -83,6 +83,8 @@ class MethodTargetInfo : TargetInfo {
     # 定義
     [string] $definition
 
+    # 型引数
+    [TypeParameterTargetInfo[]] $typeParameters = @()
     # 引数
     [ParameterTargetInfo[]] $parameters = @()
     # 戻り値
@@ -97,17 +99,33 @@ class MethodTargetInfo : TargetInfo {
         $this.name = $node.Evaluate('@name')
         $this.definition = $node.Evaluate('definition/text()')
 
+        foreach ($i in $node.Evaluate('typeParameter')) {
+            $this.typeParameters += [TypeParameterTargetInfo]::new($i)
+        }
         foreach ($i in $node.Evaluate('parameter')) {
             $this.parameters += [ParameterTargetInfo]::new($i)
         }
-
         foreach ($i in $node.Evaluate('return')) {
             $this.return += [ReturnTargetInfo]::new($i)
         }
-
         foreach ($i in $node.Evaluate('throws')) {
             $this.throws += [ThrowsTargetInfo]::new($i)
         }
+    }
+
+}
+
+class TypeParameterTargetInfo: TargetInfo {
+
+    # コメント
+    [string] $comment
+    # 型名
+    [string] $type
+
+    TypeParameterTargetInfo([XPathNavigator]$node) : base($node) {
+
+        $this.comment = $node.Evaluate('text()')
+        $this.type = $node.Evaluate('@type')
     }
 
 }
