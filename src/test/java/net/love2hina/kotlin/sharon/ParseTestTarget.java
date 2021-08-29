@@ -30,6 +30,7 @@ public class ParseTestTarget extends Object implements java.io.Serializable {
     /**
      * メソッド.
      *
+     * @param <Ty> 価格の型
      * @param this インスタンス
      * @param name 名前
      * @param amount 価格
@@ -37,7 +38,7 @@ public class ParseTestTarget extends Object implements java.io.Serializable {
      * @throws Exception 例外
      */
     @MyAnnotation
-    public int method(ParseTestTarget this, final String name, int amount) throws Exception {
+    public <Ty> int method(ParseTestTarget this, final String name, Ty amount) throws Exception {
         /// # 出力
         System.out.println("Hello, world!");
 

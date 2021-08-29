@@ -408,12 +408,17 @@ internal class Parser(val file: File) {
             val methodInfo = MethodInfo()
 
             // 実体解析
-            // 明示的なthisパラメータ
+            // タイプパラメーター
+            n.typeParameters.forEach {
+                val name = it.name.asString()
+                methodInfo.typeParameters[name] = TypeParameterInfo(name)
+            }
+            // 明示的なthisパラメーター
             n.receiverParameter.ifPresent {
                 val name = it.name.asString()
                 methodInfo.parameters[name] = ParameterInfo("", it.type.asString(), name)
             }
-            // パラメータ
+            // パラメーター
             n.parameters.forEach {
                 val name = it.name.asString()
                 methodInfo.parameters[name] = ParameterInfo(
@@ -431,18 +436,6 @@ internal class Parser(val file: File) {
                 val type = it.asString()
                 methodInfo.throws[type] = ThrowsInfo(type)
             }
-
-            writer.writeStartElement("method")
-            writer.writeAttribute("modifier", getModifier(n.modifiers))
-            writer.writeAttribute("name", n.name.asString())
-
-            // 定義全体
-            writer.writeStartElement("definition")
-            writer.writeStrings(n.getDeclarationAsString(true, true, true))
-            writer.writeEndElement()
-
-            // TODO
-            // n.typeParameters.forEach { it.accept(this, arg) }
 
             // コメントの解析
             n.comment.ifPresent {
@@ -466,16 +459,33 @@ internal class Parser(val file: File) {
                     // Javadocをパースする
                     for (match in REGEXP_ANNOTATION.findAll(content)) {
                         index = pushJavadocComment(content, name, index, match.range, methodInfo)
-                        name = (match.groups as MatchNamedGroupCollection)["s"]!!.value
+                        name = (match.groups as MatchNamedGroupCollection)["name"]!!.value
                     }
                     pushJavadocComment(content, name, index, IntRange(content.length, content.length), methodInfo)
                 }
             }
 
+            // 出力開始
+            writer.writeStartElement("method")
+            writer.writeAttribute("modifier", getModifier(n.modifiers))
+            writer.writeAttribute("name", n.name.asString())
+
+            // 定義全体
+            writer.writeStartElement("definition")
+            writer.writeStrings(n.getDeclarationAsString(true, true, true))
+            writer.writeEndElement()
+
             // 説明の出力
             writer.writeStartElement("description")
             writer.writeStrings(methodInfo.description.toString())
             writer.writeEndElement()
+            // タイプパラメーターの出力
+            methodInfo.typeParameters.forEach {
+                writer.writeStartElement("typeParameter")
+                writer.writeAttribute("type", it.value.type)
+                writer.writeStrings(it.value.description)
+                writer.writeEndElement()
+            }
             // パラメーターの出力
             methodInfo.parameters.forEach {
                 writer.writeStartElement("parameter")
@@ -521,19 +531,28 @@ internal class Parser(val file: File) {
 
                 when (name) {
                     "param" -> {
-                        val r = Regex("^(?<name>\\w+)(?:\\s+(?<desc>.*))?$")
+                        val r = Regex("^(?:(?<name>\\w+)|<(?<type>\\w+)>)(?:\\s+(?<desc>.*))?$")
                         val m = r.find(value)
 
                         if (m != null) {
                             val groups = (m.groups as MatchNamedGroupCollection)
 
-                            val paramName = groups["name"]!!.value
+                            val paramName = groups["name"]?.value
+                            val paramType = groups["type"]?.value
                             val paramDesc = groups["desc"]?.value ?: ""
 
-                            val paramInfo = methodInfo.parameters.getOrPut(paramName)
-                                { ParameterInfo("", "", paramName) }
+                            if (paramName != null) {
+                                val paramInfo = methodInfo.parameters.getOrPut(paramName)
+                                    { ParameterInfo("", "", paramName) }
 
-                            paramInfo.description = paramDesc
+                                paramInfo.description = paramDesc
+                            }
+                            else if (paramType != null) {
+                                val typeParameterInfo = methodInfo.typeParameters.getOrPut(paramType)
+                                    { TypeParameterInfo(paramType) }
+
+                                typeParameterInfo.description = paramDesc
+                            }
                         }
                     }
                     "return" -> {

@@ -7,6 +7,9 @@ internal class MethodInfo {
     /** 説明 */
     var description = StringBuilder()
 
+    /** パラメーター型 */
+    var typeParameters = LinkedHashMap<String, TypeParameterInfo>()
+
     /** パラメーター */
     val parameters = LinkedHashMap<String, ParameterInfo>()
 
