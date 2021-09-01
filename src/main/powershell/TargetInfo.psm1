@@ -115,7 +115,7 @@ class MethodTargetInfo : TargetInfo {
 
 }
 
-class TypeParameterTargetInfo: TargetInfo {
+class TypeParameterTargetInfo : TargetInfo {
 
     # コメント
     [string] $comment
@@ -130,7 +130,7 @@ class TypeParameterTargetInfo: TargetInfo {
 
 }
 
-class ParameterTargetInfo: TargetInfo {
+class ParameterTargetInfo : TargetInfo {
 
     # コメント
     [string] $comment
@@ -151,7 +151,7 @@ class ParameterTargetInfo: TargetInfo {
 
 }
 
-class ReturnTargetInfo: TargetInfo {
+class ReturnTargetInfo : TargetInfo {
 
     # コメント
     [string] $comment
@@ -166,7 +166,7 @@ class ReturnTargetInfo: TargetInfo {
 
 }
 
-class ThrowsTargetInfo: TargetInfo {
+class ThrowsTargetInfo : TargetInfo {
 
     # コメント
     [string] $comment

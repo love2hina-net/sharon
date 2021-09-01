@@ -287,8 +287,8 @@ class CodesControl : ControlStatement {
                     $this.condCtrl.Output($docWriter, $cases)
                     # 記述部
                     $docWriter.PushParagraph()
-                    # TargetEnumeratorはリセットできないので、作り直し
-                    $cases = [ConditionTargetEnumerator]::new($node, $paraNumber)
+                    # TargetEnumeratorリセット(自動的にforeachでリセットされない)
+                    $cases.Reset()
                     foreach ($case in $cases) {
                         # 再帰呼び出し
                         $this.Output($docWriter, $case)

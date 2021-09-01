@@ -15,6 +15,7 @@ using module '.\ControlStatement.psm1'
 using namespace System.Collections.Generic
 using namespace System.Text.RegularExpressions
 using namespace System.Linq
+using namespace System.Xml.XPath
 
 [CmdletBinding()]
 param()
@@ -49,7 +50,7 @@ class GananApplication {
     # XMLドキュメント
     [System.Xml.XmlDocument] $xml
     # XPath
-    [System.Xml.XPath.XPathNavigator] $xpath
+    [XPathNavigator] $xpath
 
     [void] Test() {
         $this.excel.Visible = $true
@@ -210,11 +211,17 @@ class GananApplication {
                 }
                 'class' {
                     # クラス情報
-                    $targetCursor = [ClassTargetEnumerator]::new($parent)
+                    $targetCursor = [RootTargetEnumerator]::new($parent, 'class', [Func[XPathNavigator, TargetInfo]]{
+                        param([XPathNavigator] $node)
+                        return [ClassTargetInfo]::new($node)
+                    })
                 }
                 'method' {
                     # メソッド
-                    $targetCursor = [MethodTargetEnumerator]::new($parent)
+                    $targetCursor = [RootTargetEnumerator]::new($parent, 'method', [Func[XPathNavigator, TargetInfo]]{
+                        param([XPathNavigator] $node)
+                        return [MethodTargetInfo]::new($node)
+                    })
                 }
             }
 
