@@ -8,7 +8,7 @@
     This project was released under the MIT Lincense.
 #>
 using module '.\TargetInfo.psm1'
-using module '.\TargetEnumerator.psm1'
+using module '.\TargetEnumerable.psm1'
 using module '.\DocumentWriter.psm1'
 using module '.\ControlStatement.psm1'
 
@@ -203,22 +203,22 @@ class GananApplication {
             switch ($entry.type) {
                 'once' {
                     # なし
-                    $targetCursor = [TargetEnumerator]::new()
+                    $targetCursor = [TargetEnumerable]::new()
                 }
                 'file' {
                     # TODO: ファイル情報のみ
-                    $targetCursor = [TargetEnumerator]::new()
+                    $targetCursor = [TargetEnumerable]::new()
                 }
                 'class' {
                     # クラス情報
-                    $targetCursor = [RootTargetEnumerator]::new($parent, 'class', [Func[XPathNavigator, TargetInfo]]{
+                    $targetCursor = [RootTargetEnumerable]::new($parent, 'class', [Func[XPathNavigator, TargetInfo]]{
                         param([XPathNavigator] $node)
                         return [ClassTargetInfo]::new($node)
                     })
                 }
                 'method' {
                     # メソッド
-                    $targetCursor = [RootTargetEnumerator]::new($parent, 'method', [Func[XPathNavigator, TargetInfo]]{
+                    $targetCursor = [RootTargetEnumerable]::new($parent, 'method', [Func[XPathNavigator, TargetInfo]]{
                         param([XPathNavigator] $node)
                         return [MethodTargetInfo]::new($node)
                     })

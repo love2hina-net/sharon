@@ -1,5 +1,5 @@
 ﻿using module '.\TargetInfo.psm1'
-using module '.\TargetEnumerator.psm1'
+using module '.\TargetEnumerable.psm1'
 using module '.\DocumentWriter.psm1'
 
 using namespace System.Collections.Generic
@@ -283,12 +283,10 @@ class CodesControl : ControlStatement {
 
                     $paraNumber = $docWriter.GetCurrentParagraphNumber()
                     # 条件表
-                    $cases = [ConditionTargetEnumerator]::new($node, $paraNumber)
+                    $cases = [ConditionTargetEnumerable]::new($node, $paraNumber)
                     $this.condCtrl.Output($docWriter, $cases)
                     # 記述部
                     $docWriter.PushParagraph()
-                    # TargetEnumeratorリセット(自動的にforeachでリセットされない)
-                    $cases.Reset()
                     foreach ($case in $cases) {
                         # 再帰呼び出し
                         $this.Output($docWriter, $case)
