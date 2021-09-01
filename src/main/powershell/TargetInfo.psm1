@@ -1,5 +1,7 @@
 ﻿using namespace System.Xml.XPath
 
+#region 対象情報
+
 class TargetInfo {
 
     # ノード
@@ -23,10 +25,9 @@ class ClassTargetInfo : TargetInfo {
     [string] $fullname
 
     # フィールド
-    [FieldTargetInfo[]] $fields
-
+    [TargetEnumerable] $fields
     # メソッド
-    [MethodTargetInfo[]] $methods
+    [TargetEnumerable] $methods
 
     ClassTargetInfo([XPathNavigator]$node) : base($node) {
 
@@ -35,15 +36,14 @@ class ClassTargetInfo : TargetInfo {
         $this.name = $node.Evaluate('@name')
         $this.fullname = $node.Evaluate('@fullname')
 
-        $this.fields = @()
-        foreach ($i in $node.Evaluate('field')) {
-            $this.fields += [FieldTargetInfo]::new($i)
-        }
-
-        $this.methods = @()
-        foreach ($i in $node.Evaluate('method')) {
-            $this.methods += [MethodTargetInfo]::new($i)
-        }
+        $this.fields = [TargetEnumerable]::new($node, 'field', [Func[XPathNavigator, TargetInfo]]{
+            param([XPathNavigator] $_node)
+            return [FieldTargetInfo]::new($_node)
+        })
+        $this.methods = [TargetEnumerable]::new($node, 'method', [Func[XPathNavigator, TargetInfo]]{
+            param([XPathNavigator] $_node)
+            return [MethodTargetInfo]::new($_node)
+        })
     }
 
 }
@@ -84,13 +84,13 @@ class MethodTargetInfo : TargetInfo {
     [string] $definition
 
     # 型引数
-    [TypeParameterTargetInfo[]] $typeParameters = @()
+    [TargetEnumerable] $typeParameters
     # 引数
-    [ParameterTargetInfo[]] $parameters = @()
+    [TargetEnumerable] $parameters
     # 戻り値
-    [ReturnTargetInfo[]] $return = @()
+    [TargetEnumerable] $return
     # 例外
-    [ThrowsTargetInfo[]] $throws = @()
+    [TargetEnumerable] $throws
 
     MethodTargetInfo([XPathNavigator]$node) : base($node) {
 
@@ -99,18 +99,22 @@ class MethodTargetInfo : TargetInfo {
         $this.name = $node.Evaluate('@name')
         $this.definition = $node.Evaluate('definition/text()')
 
-        foreach ($i in $node.Evaluate('typeParameter')) {
-            $this.typeParameters += [TypeParameterTargetInfo]::new($i)
-        }
-        foreach ($i in $node.Evaluate('parameter')) {
-            $this.parameters += [ParameterTargetInfo]::new($i)
-        }
-        foreach ($i in $node.Evaluate('return')) {
-            $this.return += [ReturnTargetInfo]::new($i)
-        }
-        foreach ($i in $node.Evaluate('throws')) {
-            $this.throws += [ThrowsTargetInfo]::new($i)
-        }
+        $this.typeParameters = [TargetEnumerable]::new($node, 'typeParameter', [Func[XPathNavigator, TargetInfo]]{
+            param([XPathNavigator] $_node)
+            return [TypeParameterTargetInfo]::new($_node)
+        })
+        $this.parameters = [TargetEnumerable]::new($node, 'parameter', [Func[XPathNavigator, TargetInfo]]{
+            param([XPathNavigator] $_node)
+            return [ParameterTargetInfo]::new($_node)
+        })
+        $this.return = [TargetEnumerable]::new($node, 'return', [Func[XPathNavigator, TargetInfo]]{
+            param([XPathNavigator] $_node)
+            return [ReturnTargetInfo]::new($_node)
+        })
+        $this.throws = [TargetEnumerable]::new($node, 'throws', [Func[XPathNavigator, TargetInfo]]{
+            param([XPathNavigator] $_node)
+            return [ThrowsTargetInfo]::new($_node)
+        })
     }
 
 }
@@ -241,3 +245,150 @@ class ConditionTargetInfo : TargetInfo {
     }
 
 }
+
+#endregion
+
+#region 列挙子
+
+class TargetEnumerable : System.Collections.IEnumerable {
+
+    # 対象ノード
+    hidden [XPathNavigator] $_node = $null
+    # クエリ
+    hidden [string] $_query = $null
+    # 結果生成
+    hidden [Func[XPathNavigator, TargetInfo]] $_generator = $null
+
+    TargetEnumerable() {}
+
+    TargetEnumerable([XPathNavigator] $node, [string] $query, [Func[XPathNavigator, TargetInfo]] $generator) {
+        $this._node = $node
+        $this._query = $query
+        $this._generator = $generator
+    }
+
+    hidden [XPathNodeIterator] _Evaluate() {
+        if ($null -ne $this._node) {
+            return $this._node.Evaluate($this._query)
+        }
+        else {
+            return $null
+        }
+    }
+
+    [System.Collections.IEnumerator] GetEnumerator() {
+        return [TargetEnumerator]::new($this, $this._generator)
+    }
+
+}
+
+class TargetEnumerator : System.Collections.IEnumerator {
+
+    # 親のEnumerable
+    hidden [TargetEnumerable] $_enumerable
+    # 結果生成
+    hidden [Func[XPathNavigator, TargetInfo]] $_generator
+    # クエリ結果
+    hidden [XPathNodeIterator] $_iterator = $null
+    # 現在のノード
+    hidden [object] $_current = $null
+
+    TargetEnumerator([TargetEnumerable] $parent, [Func[XPathNavigator, TargetInfo]] $generator) {
+        $this._enumerable = $parent
+        $this._generator = $generator
+        $this._Initialize()
+    }
+
+    hidden [void] _Initialize() {
+        $this._iterator = $this._enumerable._Evaluate()
+        $this._current = $null
+    }
+
+    [object] get_Current() {
+        return $this._current
+    }
+
+    [bool] MoveNext() {
+        $available = if ($null -ne $this._iterator) { $this._iterator.MoveNext() }
+        else { $false }
+
+        $this._current = if ($available) { $this._generator.Invoke($this._iterator.Current) }
+        else { $null }
+
+        return $available
+    }
+
+    [void] Reset() {
+        $this._Initialize()
+    }
+
+}
+
+class RootTargetEnumerable : TargetEnumerable {
+
+    RootTargetEnumerable([object] $parent, [string] $query, [Func[XPathNavigator, TargetInfo]] $generator)
+     : base($this._GetParentNode($parent), $this._GetQuery($parent, $query), $generator) {}
+
+    hidden [XPathNavigator] _GetParentNode([object] $parent) {
+        $info = $parent -as [TargetInfo]
+        $xpath = $parent -as [XPathNavigator]
+
+        if ($null -ne $xpath) { return $xpath }
+        elseif ($null -ne $info) { return $info.node }
+        else {
+            throw (New-Object -TypeName 'System.ArgumentException' -ArgumentList ($global:messages.E004001))
+        }
+    }
+
+    hidden [string] _GetQuery([object] $parent, [string] $query) {
+        $info = $parent -as [TargetInfo]
+        $xpath = $parent -as [XPathNavigator]
+
+        if ($null -ne $xpath) { return "//$query" }
+        elseif ($null -ne $info) { return $query }
+        else {
+            throw (New-Object -TypeName 'System.ArgumentException' -ArgumentList ($global:messages.E004001))
+        }
+    }
+
+}
+
+class ConditionTargetEnumerable : TargetEnumerable {
+
+    # 段落番号
+    [string] $number
+
+    ConditionTargetEnumerable([XPathNavigator]$node, [string]$number) : base($node, 'case', $null) {
+        $this.number = $number
+    }
+
+    [System.Collections.IEnumerator] GetEnumerator() {
+        return [ConditionTargetEnumerator]::new($this, $this.number)
+    }
+
+}
+
+class ConditionTargetEnumerator : TargetEnumerator {
+
+    # 項目番号
+    [int] $index
+    # 段落番号
+    [string] $number
+
+    ConditionTargetEnumerator([ConditionTargetEnumerable] $parent, [string]$number)
+     : base($parent, [Func[XPathNavigator, TargetInfo]]{
+            param([XPathNavigator] $node)
+            return [ConditionTargetInfo]::new($node, $this.number, ++$this.index)
+        }) {
+        $this.number = $number
+    }
+
+    hidden [void] _Initialize() {
+        $this._iterator = $this._enumerable._Evaluate()
+        $this._current = $null
+        $this.index = 0
+    }
+
+}
+
+#endregion

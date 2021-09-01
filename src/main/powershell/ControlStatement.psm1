@@ -1,5 +1,4 @@
 ﻿using module '.\TargetInfo.psm1'
-using module '.\TargetEnumerable.psm1'
 using module '.\DocumentWriter.psm1'
 
 using namespace System.Collections.Generic

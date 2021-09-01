@@ -8,7 +8,6 @@
     This project was released under the MIT Lincense.
 #>
 using module '.\TargetInfo.psm1'
-using module '.\TargetEnumerable.psm1'
 using module '.\DocumentWriter.psm1'
 using module '.\ControlStatement.psm1'
 
