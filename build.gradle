@@ -30,14 +30,20 @@ repositories {
 dependencies {
     // Kotlin
     implementation 'org.jetbrains.kotlin:kotlin-stdlib-jdk8'
+    implementation 'org.jetbrains.kotlin:kotlin-reflect'
 
     // Java Parser
-    implementation 'com.github.javaparser:javaparser-core:3.22.1'
+    implementation 'com.github.javaparser:javaparser-core:3.23.0'
 
     // テスト
     def junit_version = '5.7.2'
     testImplementation "org.junit.jupiter:junit-jupiter-api:$junit_version"
     testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:$junit_version"
+
+    def mockito_version = "3.12.4"
+    testImplementation "org.mockito:mockito-inline:$mockito_version"
+    testImplementation "org.mockito:mockito-junit-jupiter:$mockito_version"
+    testImplementation "org.mockito.kotlin:mockito-kotlin:3.2.0"
 }
 
 test {

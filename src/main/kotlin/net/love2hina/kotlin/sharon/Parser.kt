@@ -34,7 +34,6 @@ internal class Parser(val file: File) {
             xmlWriter.flush()
             xmlWriter.close()
         }
-        // https://qiita.com/opengl-8080/items/50ddee7d635c7baee0ab
     }
 
     private inner class Visitor(
