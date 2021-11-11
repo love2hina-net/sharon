@@ -29,7 +29,7 @@ internal class SharonApplication(val args: Array<String>) {
         var flagAllFiles = false
 
         for (i in args) {
-            var matchFlag: MatchResult? = null
+            var matchFlag: MatchResult?
 
             if (!flagAllFiles) {
                 matchFlag = reg.find(i)
