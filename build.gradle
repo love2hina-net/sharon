@@ -29,8 +29,9 @@ repositories {
 
 dependencies {
     // Kotlin
-    implementation 'org.jetbrains.kotlin:kotlin-stdlib-jdk8'
-    implementation 'org.jetbrains.kotlin:kotlin-reflect'
+    def kotlin_version = '1.5.31'
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
+    implementation "org.jetbrains.kotlin:kotlin-reflect:$kotlin_version"
 
     // Java Parser
     implementation 'com.github.javaparser:javaparser-core:3.23.0'

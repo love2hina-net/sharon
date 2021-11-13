@@ -9,6 +9,8 @@ fun main(args: Array<String>) {
         val application = SharonApplication(args)
 
         application.initialize()
+
+        application.processFiles()
     }
     catch (e: Throwable) {
         returnCode = -1

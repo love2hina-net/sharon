@@ -102,4 +102,15 @@ internal class SharonApplication(val args: Array<String>) {
         }
     }
 
+    fun processFiles() {
+        val mapper = FileMapper()
+
+        files.parallelStream().forEach {
+            val xmlName = mapper.assign(it)
+            val parser = Parser(it)
+
+            parser.parse(pathOutputDir.resolve(xmlName).toFile())
+        }
+    }
+
 }
