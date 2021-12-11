@@ -7,40 +7,79 @@ using namespace System.Text.RegularExpressions
 using namespace System.Linq
 using namespace System.Xml.XPath
 
+[CmdletBinding()]
+param(
+    [string] $FileTemplate,
+    [string] $FileXml,
+    [string] $FileDocument
+)
+
+$global:config = @{}
+# 対象となる行数
+$global:config.searchLines = 128
+# 対象となる列数
+$global:config.searchColumns = 64
+
+$global:const = @{}
+# xlWorksheet定数
+$global:const.xlWorksheet = -4167
+# xlShiftDown定数
+$global:const.xlShiftDown = -4121
+# xlToRight定数
+$global:const.xlToRight = -4161
+
+# メッセージ定義の読み込み
+& (Join-Path -Path $PSScriptRoot -ChildPath '.\Messages.ps1' -Resolve)
+Import-LocalizedData -BindingVariable 'messages' -FileName 'Messages'
+
 # ドキュメント生成
-class DocumentGenerator {
+class DocumentGenerator: System.IDisposable {
 
     # テンプレートフォーマット情報
-    $format = @{ entries = @() }
+    hidden $format = @{ entries = @() }
     # Excel Application
-    $excel = (New-Object -ComObject 'Excel.Application')
+    hidden $excel = (New-Object -ComObject 'Excel.Application')
     # テンプレートワークブック
-    $bookTemplate
+    hidden $bookTemplate
     # 生成ドキュメントワークブック
-    $bookDocument
+    hidden $bookDocument
 
     # XMLドキュメント
     hidden [System.Xml.XmlDocument] $xml
     # XPath
     hidden [XPathNavigator] $xpath
 
-    [void] GenerateDocument([string]$fileXml, [string]$fileTemplate) {
-
-        # コード解析XMLファイルを開く
-        $this.xml = [System.Xml.XmlDocument](Get-Content $fileXml)
-        $this.xpath = $this.xml.CreateNavigator()
+    DocumentGenerator() {
+        $this.excel.Visible = $true
 
         # テンプレートを開く
-        $this.bookTemplate = $this.excel.Workbooks.Open($fileTemplate, 0, $true)
+        $this.bookTemplate = $this.excel.Workbooks.Open($script:FileTemplate, 0, $true)
         $this.ParseTemplate()
+    }
+
+    [void] Dispose() {
+
+        # テンプレートを閉じる
+        $this.bookTemplate.Close($false)
+
+        # Excelを閉じる
+        $this.excel.Quit()
+        $this.excel = $null
+    }
+
+    [void] GenerateDocument() {
+
+        # コード解析XMLファイルを開く
+        $this.xml = [System.Xml.XmlDocument](Get-Content $script:FileXml)
+        $this.xpath = $this.xml.CreateNavigator()
 
         # ドキュメントを生成する
         $this.bookDocument = $this.excel.Workbooks.Add($global:const.xlWorksheet)
         $this.MakeDocument()
 
-        $this.bookTemplate.Close($false)
-        #$this.excel.Quit()
-        $this.excel = $null
+        # 保存する
+        $this.bookDocument.SaveAs($script:FileDocument)
+        $this.bookDocument.Close($false)
     }
 
     # 制御文解析
@@ -215,3 +254,9 @@ class DocumentGenerator {
     }
 
 }
+
+Write-Debug "[DocumentGenerator] $FileTemplate, $FileXml, $FileDocument"
+
+$generator = [DocumentGenerator]::new()
+$generator.GenerateDocument()
+$generator.Dispose()

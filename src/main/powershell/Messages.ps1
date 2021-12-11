@@ -16,5 +16,8 @@ ConvertFrom-StringData -StringData @'
     E003004 = Cannot operation for a specified line, because that has already been output.
     E003005 = The number of lines specified for output is less than one.
     E004001 = The search starting point is unknown.
+    E005001 = The specified a template file was not found.
+    E005002 = The specified output path is not a directory.
+    E005003 = The specified path is not a file or directory.
 '@
 }

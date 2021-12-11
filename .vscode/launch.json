@@ -9,7 +9,15 @@
             "type": "PowerShell",
             "request": "launch",
             "script": "${workspaceFolder}/src/main/powershell/ganan.ps1",
-            "args": ["-Debug", "-Verbose", "-ErrorAction Break"],
+            "args": ["-Path test.xml", "-Template template/test.xlsm", "-OutputDirectory test", "-Debug", "-Verbose", "-ErrorAction Break"],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "PowerShell: Launch DocumentGenerator",
+            "type": "PowerShell",
+            "request": "launch",
+            "script": "${workspaceFolder}/src/main/powershell/DocumentGenerator.ps1",
+            "args": ["-FileTemplate ${workspaceFolder}\\template\\test.xlsm", "-FileXml ${workspaceFolder}\\test.xml", "-FileDocument ${workspaceFolder}\\test\\test.xlsx", "-Debug", "-Verbose", "-ErrorAction Break"],
             "cwd": "${workspaceFolder}"
         },
         {
