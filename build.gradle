@@ -1,6 +1,15 @@
+buildscript {
+    ext.kotlin_version = '1.6.0'
+    ext.versions = [
+        'target_jvm': 11,
+        'junit': '5.8.2',
+        'mockito': '4.1.0'
+    ]
+}
+
 plugins {
     id 'java'
-    id 'org.jetbrains.kotlin.jvm' version '1.5.31'
+    id 'org.jetbrains.kotlin.jvm' version "$kotlin_version"
     id 'application'
 }
 
@@ -8,19 +17,19 @@ group 'net.love2hina'
 version '0.1.0-SNAPSHOT'
 
 compileJava {
-    options.release = 11
+    options.release = versions.target_jvm
 }
 
 compileKotlin {
-    kotlinOptions.jvmTarget = "11"
+    kotlinOptions.jvmTarget = "${versions.target_jvm}"
 }
 
 compileTestJava {
-    options.release = 11
+    options.release = versions.target_jvm
 }
 
 compileTestKotlin {
-    kotlinOptions.jvmTarget = "11"
+    kotlinOptions.jvmTarget = "${versions.target_jvm}"
 }
 
 repositories {
@@ -29,22 +38,19 @@ repositories {
 
 dependencies {
     // Kotlin
-    def kotlin_version = '1.5.31'
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
     implementation "org.jetbrains.kotlin:kotlin-reflect:$kotlin_version"
 
     // Java Parser
-    implementation 'com.github.javaparser:javaparser-core:3.23.0'
+    implementation 'com.github.javaparser:javaparser-core:3.23.1'
 
     // テスト
-    def junit_version = '5.7.2'
-    testImplementation "org.junit.jupiter:junit-jupiter-api:$junit_version"
-    testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:$junit_version"
+    testImplementation "org.junit.jupiter:junit-jupiter-api:${versions.junit}"
+    testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:${versions.junit}"
 
-    def mockito_version = "3.12.4"
-    testImplementation "org.mockito:mockito-inline:$mockito_version"
-    testImplementation "org.mockito:mockito-junit-jupiter:$mockito_version"
-    testImplementation "org.mockito.kotlin:mockito-kotlin:3.2.0"
+    testImplementation "org.mockito:mockito-inline:${versions.mockito}"
+    testImplementation "org.mockito:mockito-junit-jupiter:${versions.mockito}"
+    testImplementation "org.mockito.kotlin:mockito-kotlin:4.0.0"
 }
 
 test {
