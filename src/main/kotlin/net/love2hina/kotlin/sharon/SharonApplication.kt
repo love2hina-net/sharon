@@ -1,21 +1,36 @@
 package net.love2hina.kotlin.sharon
 
-import java.io.File
+import net.love2hina.kotlin.sharon.dao.FileMapDaoImpl
+import net.love2hina.kotlin.sharon.entity.FileMap
+import org.seasar.doma.jdbc.UniqueConstraintException
+
+import java.io.*
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.*
-import java.util.stream.Stream
-import kotlin.streams.asStream
+import kotlinx.serialization.*
+import kotlinx.serialization.json.*
+import java.nio.charset.StandardCharsets
 
-internal class SharonApplication(val args: Array<String>) {
+internal class SharonApplication(val args: Array<String>): FileMapper, AutoCloseable {
+
+    private val config = DbConfig.create()
+
+    private val fileMapDao = FileMapDaoImpl(config)
 
     lateinit var pathOutputDir: Path
         private set
 
     val listFilePath = LinkedList<String>()
 
-    lateinit var files: List<File>
-        private set
+    init {
+        // setup
+        config.transactionManager.required { fileMapDao.create() }
+    }
+
+    override fun close() {
+        config.transactionManager.required { fileMapDao.drop() }
+    }
 
     fun initialize() {
         parseArgs()
@@ -78,39 +93,91 @@ internal class SharonApplication(val args: Array<String>) {
         if (!::pathOutputDir.isInitialized) {
             throw IllegalArgumentException("出力ディレクトリの指定がありません。 --outdir")
         }
+
+        if (!pathOutputDir.isAbsolute) {
+            // 絶対パス化
+            pathOutputDir = pathOutputDir.toAbsolutePath()
+        }
     }
 
     private fun listUpFiles() {
-        files = listFilePath.asSequence().asStream().flatMap(this::mapToFile).toList()
+        listFilePath.forEach {
+            val file = File(it)
+
+            if (file.isFile) {
+                // 単一のファイル
+                assign(file)
+            }
+            else if (file.isDirectory) {
+                // ディレクトリ
+                Files.walk(file.toPath())
+                    .filter { path -> path.toString().endsWith(".java", true) }
+                    .forEach { path -> assign(path.toFile()) }
+            }
+            else {
+                throw IllegalArgumentException("指定がファイルでもディレクトリでもありません。 $it")
+            }
+        }
     }
 
-    private fun mapToFile(path: String): Stream<File> {
-        val file = File(path)
+    private fun assign(fileSrc: File): FileMap {
+        val entity = FileMap()
+        entity.srcFile = fileSrc.absolutePath
+        entity.fileName = fileSrc.name // TODO 拡張子削除
 
-        return if (file.isFile) {
-            // 単一のファイル
-            Stream.of(file)
-        }
-        else if (file.isDirectory) {
-            // ディレクトリ
-            Files.walk(file.toPath())
-                .filter { it.toString().endsWith(".java", true) }
-                .map { it.toFile() }
-        }
-        else {
-            throw IllegalArgumentException("指定がファイルでもディレクトリでもありません。 $path")
-        }
+        do {
+            entity.id = UUID.randomUUID().toString()
+            entity.xmlFile = pathOutputDir.resolve(entity.id + ".xml").toString()
+
+            try {
+                config.transactionManager.required { fileMapDao.insert(entity) }
+
+                return entity;
+            }
+            catch (e: UniqueConstraintException) {
+                // リトライ(キー重複)
+            }
+        } while (true)
     }
 
     fun processFiles() {
-        val mapper = FileMapper()
-
-        files.parallelStream().forEach {
-            val xmlName = mapper.assign(it)
-            val parser = Parser(it)
-
-            parser.parse(pathOutputDir.resolve(xmlName).toFile())
+        config.transactionManager.required {
+            fileMapDao.selectAll().use { stream ->
+                stream.parallel().forEach { Parser.parse(this, it) }
+            }
         }
+    }
+
+    fun export() {
+        val json = Json { encodeDefaults = true }
+        val fileList = pathOutputDir.resolve("filelist.json").toFile()
+
+        BufferedWriter(OutputStreamWriter(FileOutputStream(fileList, false), StandardCharsets.UTF_8)).use { writer ->
+            config.transactionManager.required {
+                fileMapDao.selectAll().use { stream ->
+                    stream.forEach {
+                        writer.appendLine(json.encodeToString(it))
+                    }
+                }
+            }
+        }
+    }
+
+    internal fun getFiles(): Array<FileMap> {
+        lateinit var result: Array<FileMap>
+
+        config.transactionManager.required {
+            fileMapDao.selectAll().use { stream ->
+                result = stream.toArray { arrayOfNulls<FileMap>(it) }
+            }
+        }
+
+        return result
+    }
+
+    override fun applyPackage(entity: FileMap, packagePath: String?) {
+        entity.packagePath = packagePath
+        config.transactionManager.required { fileMapDao.update(entity) }
     }
 
 }

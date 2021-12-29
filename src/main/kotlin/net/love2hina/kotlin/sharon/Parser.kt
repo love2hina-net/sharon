@@ -12,18 +12,34 @@ import com.github.javaparser.ast.stmt.*
 import com.github.javaparser.ast.type.*
 import com.github.javaparser.ast.visitor.VoidVisitor
 import net.love2hina.kotlin.sharon.data.*
+import net.love2hina.kotlin.sharon.entity.FileMap
+
 import java.io.File
 import java.lang.Integer.compare
 import java.nio.charset.StandardCharsets.UTF_8
-import java.util.*
+import java.util.Optional
 
-internal class Parser(val file: File) {
+internal class Parser(
+    val fileSrc: File,
+    val mapper: FileMapper?,
+    val entity: FileMap?
+) {
 
-    fun parse(xml: File) {
-        val unit = StaticJavaParser.parse(file)
+    companion object Default {
+        fun parse(mapper: FileMapper, entity: FileMap) {
+            Parser(File(entity.srcFile), mapper, entity).parse(File(entity.xmlFile))
+        }
+
+        fun parse(file: File, xml: File) {
+            Parser(file, null, null).parse(xml)
+        }
+    }
+
+    fun parse(fileXml: File) {
+        val unit = StaticJavaParser.parse(fileSrc)
 
         // XML
-        val xmlWriter = SmartXMLStreamWriter(xml)
+        val xmlWriter = SmartXMLStreamWriter(fileXml)
 
         xmlWriter.use {
             xmlWriter.writeStartDocument(UTF_8.name(), "1.0")
@@ -52,12 +68,17 @@ internal class Parser(val file: File) {
 
             writer.writeStartElement("file")
             writer.writeAttribute("language", "java")
-            writer.writeAttribute("src", this@Parser.file.canonicalPath)
+            writer.writeAttribute("src", this@Parser.fileSrc.canonicalPath)
 
             // モジュール
             n.module.ifPresent { it.accept(this, arg) }
             // パッケージ宣言
-            n.packageDeclaration.ifPresent { it.accept(this, arg) }
+            n.packageDeclaration.ifPresent {
+                // パッケージを設定
+                this@Parser.entity?.let { entity -> mapper?.applyPackage(entity, it.name.asString()) }
+
+                it.accept(this, arg)
+            }
             // インポート
             n.imports.forEach { it.accept(this, arg) }
             // 型宣言

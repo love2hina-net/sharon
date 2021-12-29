@@ -6,11 +6,12 @@ fun main(args: Array<String>) {
     var returnCode: Int = 0
 
     try {
-        val application = SharonApplication(args)
+        SharonApplication(args).use { application ->
+            application.initialize()
 
-        application.initialize()
-
-        application.processFiles()
+            application.processFiles()
+            application.export()
+        }
     }
     catch (e: Throwable) {
         returnCode = -1

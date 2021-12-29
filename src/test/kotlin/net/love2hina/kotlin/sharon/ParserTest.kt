@@ -10,8 +10,7 @@ class ParserTest {
         val pathSrcFile = pathProjectRoot.resolve("src/test/java/net/love2hina/kotlin/sharon/ParseTestTarget.java")
         val pathXmlFile = pathProjectRoot.resolve("test.xml")
 
-        val parser = Parser(pathSrcFile.toFile())
-        parser.parse(pathXmlFile.toFile())
+        Parser.parse(pathSrcFile.toFile(), pathXmlFile.toFile())
     }
 
 }

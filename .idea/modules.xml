@@ -2,7 +2,6 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/sharon.iml" filepath="$PROJECT_DIR$/.idea/modules/sharon.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/sharon.main.iml" filepath="$PROJECT_DIR$/.idea/modules/sharon.main.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/sharon.test.iml" filepath="$PROJECT_DIR$/.idea/modules/sharon.test.iml" />
     </modules>

@@ -2,8 +2,8 @@
 <project version="4">
   <component name="CompilerConfiguration">
     <bytecodeTargetLevel target="17">
-      <module name="sharon.main" target="11" />
-      <module name="sharon.test" target="11" />
+      <module name="net.love2hina.sharon.main" target="11" />
+      <module name="net.love2hina.sharon.test" target="11" />
     </bytecodeTargetLevel>
   </component>
 </project>

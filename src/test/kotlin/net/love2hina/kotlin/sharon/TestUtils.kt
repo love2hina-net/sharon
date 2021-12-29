@@ -21,8 +21,8 @@ internal fun setProperty(target: Any, cls: KClass<*>, name: String, value: Any) 
     property.setter.call(target, value)
 }
 
-internal inline fun <reified T: Any> setProperty(target: T, name: String, value: Any) {
-    setProperty(target, T::class, name, value)
+internal inline fun <reified T: Any> T.setProperty(name: String, value: Any) {
+    setProperty(this, T::class, name, value)
 }
 
 internal fun getProperty(target: Any, cls: KClass<*>, name: String): Any? {
@@ -34,6 +34,6 @@ internal fun getProperty(target: Any, cls: KClass<*>, name: String): Any? {
     return property.getter.call(target)
 }
 
-internal inline fun <reified T: Any> getProperty(target: T, name: String): Any? {
-    return getProperty(target, T::class, name)
+internal inline fun <reified T: Any> T.getProperty(name: String): Any? {
+    return getProperty(this, T::class, name)
 }
