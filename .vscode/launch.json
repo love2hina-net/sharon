@@ -9,7 +9,7 @@
             "type": "PowerShell",
             "request": "launch",
             "script": "${workspaceFolder}/src/main/powershell/ganan.ps1",
-            "args": ["-Path test.xml", "-Template template/test.xlsm", "-OutputDirectory test", "-Debug", "-Verbose", "-ErrorAction Break"],
+            "args": ["-Path test\\out", "-Template template\\test.xlsm", "-OutputDirectory test\\doc", "-Debug", "-Verbose", "-ErrorAction Break"],
             "cwd": "${workspaceFolder}"
         },
         {

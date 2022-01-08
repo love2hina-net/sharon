@@ -14,6 +14,7 @@ fun main(args: Array<String>) {
         }
     }
     catch (e: Throwable) {
+        println("エラーが発生しました。$e")
         returnCode = -1
     }
 

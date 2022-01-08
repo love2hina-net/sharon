@@ -10,10 +10,10 @@
 
 [CmdletBinding()]
 param(
-    # Sharonで出力したXMLファイルを指定します。
-    # ディレクトリを指定した場合、配下のXMLを対象とします。
+    # Sharonで出力したfilelist.jsonを指定します。
+    # ディレクトリを指定した場合、配下のfilelist.jsonを対象とします。
     [Parameter(Mandatory=$true)]
-    [string[]] $Path,
+    [string] $Path,
 
     # Excelテンプレートファイルを指定します。
     [Parameter(Mandatory=$true)]
@@ -30,20 +30,31 @@ Import-LocalizedData -BindingVariable 'messages' -FileName 'Messages'
 
 class GananApplication {
 
+    # ファイルリスト
+    [string] $filelist
+
     # テンプレートファイル名
     [string] $template
 
     # 出力先ディレクトリ
     [string] $outputDir
 
-    # ファイルリスト
-    [string[]] $files = @()
-
     GananApplication() {
         Write-Debug "[GananApplication] begin..."
 
+        $this.filelist = [System.IO.Path]::GetFullPath($script:Path)
         $this.template = [System.IO.Path]::GetFullPath($script:Template)
         $this.outputDir = [System.IO.Path]::GetFullPath($script:OutputDirectory)
+
+        # ファイルリストチェック
+        if ([System.IO.Directory]::Exists($this.filelist)) {
+            # ディレクトリのため、ファイル名補完
+            $this.filelist = [System.IO.Path]::Combine($this.filelist, 'filelist.json')
+        }
+        if (![System.IO.File]::Exists($this.filelist)) {
+            throw (New-Object -TypeName 'System.ArgumentException' `
+                -ArgumentList ("$($global:messages.E005003) Template:$($script:Path)"))
+        }
 
         # テンプレートチェック
         if (![System.IO.File]::Exists($this.template)) {
@@ -57,38 +68,20 @@ class GananApplication {
                 -ArgumentList ("$($global:messages.E005002) OutputDirectory:$($script:OutputDirectory)"))
         }
 
-        # 生成対象XMLファイル列挙
-        $list = [System.Collections.Generic.List[string]]::new()
-        foreach ($i in $script:Path) {
-            $fullpath = [System.IO.Path]::GetFullPath($i)
-
-            if ([System.IO.File]::Exists($fullpath)) {
-                [void]$list.Add($fullpath)
-            }
-            elseif ([System.IO.Directory]::Exists($fullpath)) {
-                # ディレクトリ内のXMLファイルを対象とする
-                [void]$list.AddRange([System.IO.Directory]::EnumerateFiles($fullpath, '*.xml'))
-            }
-            else {
-                throw (New-Object -TypeName 'System.ArgumentException' `
-                    -ArgumentList ("$($global:messages.E005003) Path:$i"))
-            }
-        }
-
-        $this.files = $list.ToArray()
-
         Write-Debug "[GananApplication] end."
     }
 
     [void] GenerateDocuments() {
         Write-Debug "[GenerateDocuments] begin..."
 
-        $jobs = $this.files | ForEach-Object {
-            $fileTemplate = $this.template
-            $fileXml = $_
-            $fileDocument = [System.IO.Path]::Combine($this.outputDir, [System.IO.Path]::GetFileNameWithoutExtension($_) + ".xlsx")
+        $pathDocGen = (Join-Path -Path $PSScriptRoot -ChildPath '.\DocumentGenerator.ps1' -Resolve)
+        $fileTemplate = $this.template
+        $dirOutput = $this.outputDir
 
-            Start-ThreadJob {
+        [System.IO.File]::ReadLines($this.filelist, [System.Text.Encoding]::UTF8) | `
+            ConvertFrom-Json | ForEach-Object -Parallel {
+                $json = $_
+
                 # 出力設定を引き継ぐ
                 $ConfirmPreference = $using:ConfirmPreference
                 $DebugPreference = $using:DebugPreference
@@ -96,14 +89,26 @@ class GananApplication {
                 $WarningPreference = $using:WarningPreference
                 $ErrorActionPreference = $using:ErrorActionPreference
 
-                & (Join-Path -Path $using:PSScriptRoot -ChildPath '.\DocumentGenerator.ps1' -Resolve) -FileTemplate "$using:fileTemplate" -FileXml "$using:fileXml" -FileDocument "$using:fileDocument"
-            }
-        }
+                # 出力ファイル名生成
+                if ($json.packagePath -ne "") {
+                    $dirPackage = [System.IO.Path]::Combine($using:dirOutput, $json.packagePath.Replace('.', [System.IO.Path]::DirectorySeparatorChar))
 
-        do {
-            Receive-Job -Job $jobs
-        } while ($null -eq (Wait-Job -Job $jobs -Timeout 1))
-        Receive-Job -Job $jobs
+                    if (-not (Test-Path -Path "$dirPackage" -PathType 'Container')) {
+                        # 存在しないので、ディレクトリを作成する
+                        Write-Debug "[GenerateDocuments] Creating directory... dir:$dirPackage"
+
+                        New-Item -Path "$dirPackage" -ItemType Directory
+                    }
+
+                    $fileDocument = [System.IO.Path]::Combine($dirPackage, "$($json.fileName).xlsx")
+                }
+                else {
+                    $fileDocument = [System.IO.Path]::Combine($using:dirOutput, "$($json.fileName).xlsx")
+                }
+
+                Write-Debug "[GenerateDocuments] Generating xml:$($json.xmlFile) doc:$fileDocument"
+                & "$using:pathDocGen" -FileTemplate "$using:fileTemplate" -FileXml "$($json.xmlFile)" -FileDocument "$fileDocument"
+            }
 
         Write-Debug "[GenerateDocuments] end."
     }
