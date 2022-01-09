@@ -48,6 +48,9 @@ public int method(String name) throws IOException {
     /// その他の場合
     else {
     }
+
+    /// # リターンする
+    return 0;
 }
 ```
 
