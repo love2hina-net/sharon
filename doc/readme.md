@@ -14,7 +14,7 @@
 整形処理がスクリプトであることで、整形処理自体を直接カスタマイズすることが容易となっています。
 
 ### License
-This project was released under the MIT Lincense.
+This project was released under the MIT License.
 
 ## 記載ルール
 このプログラムでは、それぞれ一定のルールに従って、ソースコードやExcelテンプレートファイルを用意する必要があります。

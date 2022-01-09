@@ -4,7 +4,7 @@
 .DESCRIPTION
     the code parser(${applicationName}) launching script.
 .NOTES
-    This project was released under the MIT Lincense.
+    This project was released under the MIT License.
 #>
 
 # change code page UTF-8(65001)

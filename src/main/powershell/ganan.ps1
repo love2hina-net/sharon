@@ -5,7 +5,7 @@
     コードパーサー(Sharon)で解析したXMLを指定されたExcelテンプレートに展開し、
     コードドキュメントを生成します。
 .NOTES
-    This project was released under the MIT Lincense.
+    This project was released under the MIT License.
 #>
 
 [CmdletBinding()]
