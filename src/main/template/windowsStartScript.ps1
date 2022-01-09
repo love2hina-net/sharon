@@ -20,22 +20,14 @@ if (\$env:JAVA_HOME -ne '') {
     \$javaHome = [Environment]::ExpandEnvironmentVariables(\$env:JAVA_HOME)
     \$javaExe = (Join-Path -Path "\$javaHome" -ChildPath 'bin\\java.exe')
     if (-not (Test-Path -Path "\$javaExe")) {
-        Write-Error "ERROR: JAVA_HOME is set to an invalid directory: \$env:JAVA_HOME"
-        Write-Error ''
-        Write-Error 'Please set the JAVA_HOME variable in your environment to match the'
-        Write-Error 'location of your Java installation.'
-        throw 'FAILED'
+        throw "ERROR: JAVA_HOME is set to an invalid directory: \$env:JAVA_HOME"
     }
 }
 else {
     \$javaExe = 'java.exe'
     [void](. "\$javaExe" -version)
     if (-not \$?) {
-        Write-Error 'ERROR: JAVA_HOME is not set and no "java" command could be found in your PATH.'
-        Write-Error ''
-        Write-Error 'Please set the JAVA_HOME variable in your environment to match the'
-        Write-Error 'location of your Java installation.'
-        throw 'FAILED'
+        throw 'ERROR: JAVA_HOME is not set and no "java" command could be found in your PATH.'
     }
 }
 
