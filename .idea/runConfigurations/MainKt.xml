@@ -1,0 +1,11 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="MainKt" type="JetRunConfigurationType" nameIsGenerated="true">
+    <option name="MAIN_CLASS_NAME" value="net.love2hina.kotlin.sharon.MainKt" />
+    <module name="Sharon.sharon.main" />
+    <option name="PROGRAM_PARAMETERS" value="--outdir test/out -- src/test/java" />
+    <shortenClasspath name="NONE" />
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>

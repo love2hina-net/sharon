@@ -1,3 +1,9 @@
+import com.google.common.base.Joiner
+import com.google.common.collect.Iterables
+import org.gradle.api.internal.plugins.DefaultTemplateBasedStartScriptGenerator
+import org.gradle.api.internal.plugins.UnixStartScriptGenerator
+import java.io.Writer
+
 buildscript {
     val versions by extra { mapOf<String, Any>(
         "kotlin" to "1.6.0",
@@ -96,6 +102,67 @@ tasks {
 
     jar {
         duplicatesStrategy = DuplicatesStrategy.INCLUDE
+    }
+
+    open class CreateStartScriptsEx: CreateStartScripts() {
+        override fun getWindowsScript(): File? = File(outputDir, "$applicationName.ps1")
+
+        override fun generate() {
+            super.generate()
+
+            // Unix用ファイルは不要
+            unixScript.delete()
+        }
+    }
+
+    open class PowerShellTemplateBindingFactory: Transformer<Map<String, String?>, JavaAppStartScriptGenerationDetails> {
+
+        override fun transform(details: JavaAppStartScriptGenerationDetails): Map<String, String?> =
+            hashMapOf(
+                "applicationName" to details.applicationName,
+                "optsEnvironmentVar" to details.optsEnvironmentVar,
+                "exitEnvironmentVar" to details.exitEnvironmentVar,
+                "mainClassName" to details.mainClassName,
+                "defaultJvmOpts" to "",
+                "appNameSystemProperty" to details.appNameSystemProperty,
+                "appHomeRelativePath" to createJoinedAppHomeRelativePath(details.scriptRelPath),
+                "classpath" to createJoinedPath(details.classpath),
+                "modulePath" to createJoinedPath(details.modulePath),
+            )
+
+        private fun createJoinedPath(path: Iterable<String?>): String =
+            Joiner.on(";").join(Iterables.transform(path) { "\$appHome\\${it?.replace("/", "\\") ?: ""}" })
+
+        private fun createJoinedAppHomeRelativePath(scriptRelPath: String?): String {
+            val depth = scriptRelPath?.sumOf { if (it == '/') 1L else 0L  } ?: 0L
+            val builder = StringBuilder()
+            for (i in 1..depth) {
+                if (i > 1) builder.append("\\")
+                builder.append("..")
+            }
+            return builder.toString()
+        }
+
+    }
+
+    open class EmptyStartScriptGenerator: ScriptGenerator {
+        override fun generateScript(details: JavaAppStartScriptGenerationDetails, destination: Writer) {
+            // なにもしない
+        }
+    }
+
+    open class PowerShellStartScriptGenerator: DefaultTemplateBasedStartScriptGenerator(
+        "\r\n",
+        PowerShellTemplateBindingFactory(),
+        utf8ClassPathResource(UnixStartScriptGenerator::class.java, "windowsStartScript.ps1")
+    )
+
+    replace("startScripts", CreateStartScriptsEx::class.java)
+    withType<CreateStartScriptsEx> {
+        val generator = PowerShellStartScriptGenerator()
+        generator.template = resources.text.fromFile("src/main/template/windowsStartScript.ps1", "UTF-8")
+        windowsStartScriptGenerator = generator
+        unixStartScriptGenerator = EmptyStartScriptGenerator()
     }
 
 }
