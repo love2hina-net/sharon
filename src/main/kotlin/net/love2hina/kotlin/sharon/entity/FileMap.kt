@@ -2,7 +2,6 @@ package net.love2hina.kotlin.sharon.entity
 
 import kotlinx.serialization.Serializable
 import org.seasar.doma.*
-import java.util.UUID
 
 @Serializable
 @Entity(metamodel = Metamodel())
@@ -31,5 +30,5 @@ data class FileMap(
     var fileName: String,
 
 ) {
-    constructor(): this(UUID.randomUUID().toString(), "", "", null, "")
+    constructor(): this("", "", "", null, "")
 }

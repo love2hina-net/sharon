@@ -11,6 +11,7 @@ import java.util.*
 import kotlinx.serialization.*
 import kotlinx.serialization.json.*
 import java.nio.charset.StandardCharsets
+import java.security.MessageDigest
 
 internal class SharonApplication(val args: Array<String>): FileMapper, AutoCloseable {
 
@@ -120,14 +121,23 @@ internal class SharonApplication(val args: Array<String>): FileMapper, AutoClose
         }
     }
 
+    private fun ByteArray.toHexString(): String = joinToString(separator = "") { "%02x".format(it) }
+
+    private fun Int.format(format: String): String =  String.format(format, this)
+
     private fun assign(fileSrc: File): FileMap {
         val entity = FileMap()
         entity.srcFile = fileSrc.absolutePath
         entity.fileName = fileSrc.name // TODO 拡張子削除
 
+        val md = MessageDigest.getInstance("SHA-256")
+        md.update(fileSrc.absolutePath.toByteArray())
+        val fileHash = md.digest().toHexString()
+        var index = 0
+
         do {
-            entity.id = UUID.randomUUID().toString()
-            entity.xmlFile = pathOutputDir.resolve(entity.id + ".xml").toString()
+            entity.id = "${fileHash}_${index.format("%03d")}"
+            entity.xmlFile = pathOutputDir.resolve("${entity.id}.xml").toString()
 
             try {
                 config.transactionManager.required { fileMapDao.insert(entity) }
@@ -136,6 +146,7 @@ internal class SharonApplication(val args: Array<String>): FileMapper, AutoClose
             }
             catch (e: UniqueConstraintException) {
                 // リトライ(キー重複)
+                ++index
             }
         } while (true)
     }
