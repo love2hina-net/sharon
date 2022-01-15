@@ -1,6 +1,5 @@
 package net.love2hina.kotlin.sharon
 
-import net.love2hina.kotlin.sharon.dao.FileMapDaoImpl
 import net.love2hina.kotlin.sharon.entity.FileMap
 import org.seasar.doma.jdbc.UniqueConstraintException
 
@@ -13,11 +12,9 @@ import kotlinx.serialization.json.*
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
 
-internal class SharonApplication(val args: Array<String>): FileMapper, AutoCloseable {
+class SharonApplication(val args: Array<String>): FileMapper, AutoCloseable {
 
-    private val config = DbConfig.create()
-
-    private val fileMapDao = FileMapDaoImpl(config)
+    private val dbManager = DbManager()
 
     lateinit var pathOutputDir: Path
         private set
@@ -26,11 +23,12 @@ internal class SharonApplication(val args: Array<String>): FileMapper, AutoClose
 
     init {
         // setup
-        config.transactionManager.required { fileMapDao.create() }
+        dbManager.execute { it.create() }
     }
 
     override fun close() {
-        config.transactionManager.required { fileMapDao.drop() }
+        dbManager.execute { it.drop() }
+        dbManager.close()
     }
 
     fun initialize() {
@@ -140,9 +138,9 @@ internal class SharonApplication(val args: Array<String>): FileMapper, AutoClose
             entity.xmlFile = pathOutputDir.resolve("${entity.id}.xml").toString()
 
             try {
-                config.transactionManager.required { fileMapDao.insert(entity) }
+                dbManager.execute { it.insert(entity) }
 
-                return entity;
+                return entity
             }
             catch (e: UniqueConstraintException) {
                 // リトライ(キー重複)
@@ -152,8 +150,8 @@ internal class SharonApplication(val args: Array<String>): FileMapper, AutoClose
     }
 
     fun processFiles() {
-        config.transactionManager.required {
-            fileMapDao.selectAll().use { stream ->
+        dbManager.execute { dao ->
+            dao.selectAll().use { stream ->
                 stream.parallel().forEach { Parser.parse(this, it) }
             }
         }
@@ -164,8 +162,8 @@ internal class SharonApplication(val args: Array<String>): FileMapper, AutoClose
         val fileList = pathOutputDir.resolve("filelist.json").toFile()
 
         BufferedWriter(OutputStreamWriter(FileOutputStream(fileList, false), StandardCharsets.UTF_8)).use { writer ->
-            config.transactionManager.required {
-                fileMapDao.selectAll().use { stream ->
+            dbManager.execute { dao ->
+                dao.selectAll().use { stream ->
                     stream.forEach {
                         writer.appendLine(json.encodeToString(it))
                     }
@@ -177,8 +175,8 @@ internal class SharonApplication(val args: Array<String>): FileMapper, AutoClose
     internal fun getFiles(): Array<FileMap> {
         lateinit var result: Array<FileMap>
 
-        config.transactionManager.required {
-            fileMapDao.selectAll().use { stream ->
+        dbManager.execute { dao ->
+            dao.selectAll().use { stream ->
                 result = stream.toArray { arrayOfNulls<FileMap>(it) }
             }
         }
@@ -188,7 +186,7 @@ internal class SharonApplication(val args: Array<String>): FileMapper, AutoClose
 
     override fun applyPackage(entity: FileMap, packagePath: String?) {
         entity.packagePath = packagePath
-        config.transactionManager.required { fileMapDao.update(entity) }
+        dbManager.execute { it.update(entity) }
     }
 
 }

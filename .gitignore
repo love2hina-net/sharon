@@ -1,3 +1,6 @@
 /.gradle/
 /build/
 /test/
+/db.*.db
+/db.newFile
+/db.tempFile

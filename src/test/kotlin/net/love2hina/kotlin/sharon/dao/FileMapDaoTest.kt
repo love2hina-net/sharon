@@ -1,6 +1,6 @@
 package net.love2hina.kotlin.sharon.dao
 
-import net.love2hina.kotlin.sharon.DbConfig
+import net.love2hina.kotlin.sharon.DbManager
 import net.love2hina.kotlin.sharon.entity.FileMap
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
@@ -10,9 +10,7 @@ import org.seasar.doma.jdbc.UniqueConstraintException
 
 open class FileMapDaoTest {
 
-    protected val config = DbConfig.create()
-
-    protected val dao = FileMapDaoImpl(config)
+    protected val dbManager = DbManager()
 
     // JUnitのテスト実行時とは違うインスタンスになってしまうが…
     companion object Impl: FileMapDaoTest() {
@@ -21,14 +19,14 @@ open class FileMapDaoTest {
         @BeforeAll
         @JvmStatic
         fun initialize() {
-            config.transactionManager.required { dao.create() }
+            dbManager.execute { dao-> dao.create() }
         }
 
         @Suppress("unused")
         @AfterAll
         @JvmStatic
         fun release() {
-            config.transactionManager.required { dao.drop() }
+            dbManager.execute { dao-> dao.drop() }
         }
 
     }
@@ -37,7 +35,7 @@ open class FileMapDaoTest {
     fun insert001() {
         val entity = FileMap()
 
-        config.transactionManager.required { dao.insert(entity) }
+        dbManager.execute { dao-> dao.insert(entity) }
     }
 
     @Test
@@ -45,7 +43,7 @@ open class FileMapDaoTest {
         val entity = FileMap()
 
         assertThrows<UniqueConstraintException> {
-            config.transactionManager.required {
+            dbManager.execute { dao ->
                 dao.insert(entity)
                 dao.insert(entity)
             }
