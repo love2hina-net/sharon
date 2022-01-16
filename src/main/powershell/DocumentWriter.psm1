@@ -21,6 +21,10 @@ class DocumentWriter {
     # 生成ドキュメント側で出力した行位置
     [long] $lineDocument = 0
 
+    # ミューテックス
+    [System.Threading.Mutex] $mutex =
+        (New-Object -TypeName 'System.Threading.Mutex' -ArgumentList ($false, 'Global\sharon.doc.mutex'))
+
     # トランザクションスタック
     [Stack[TransactionRange]] $stackTransaction =
         (New-Object -TypeName 'System.Collections.Generic.Stack[TransactionRange]')
@@ -176,9 +180,16 @@ class DocumentWriter {
 
         [long] $lineDocumentStart = $this.GetTemplateRowOnDocument($lineStart)
 
-        # 挿入
-        [void] $this.sheetDocument.Rows("$($lineDocumentStart):$($lineDocumentStart + $lineLength - 1)").Copy()
-        [void] $this.sheetDocument.Rows("$($this.lineDocument + 1)").Insert($global:const.xlShiftDown)
+        # クリップボードのコンフリクト防止
+        $this.mutex.WaitOne()
+        try {
+            # 挿入
+            [void] $this.sheetDocument.Rows("$($lineDocumentStart):$($lineDocumentStart + $lineLength - 1)").Copy()
+            [void] $this.sheetDocument.Rows("$($this.lineDocument + 1)").Insert($global:const.xlShiftDown)
+        }
+        finally {
+            $this.mutex.ReleaseMutex()
+        }
 
         # シフト処理
         if ($shiftStep -gt 0) {
