@@ -84,6 +84,9 @@ application {
     applicationDistribution.from("src/main/powershell") {
         into("bin")
     }
+    applicationDistribution.from("LICENSE.txt") {
+        into("")
+    }
 }
 
 tasks {
