@@ -67,13 +67,20 @@ class DocumentWriter {
     [List[object]] $listLateReplace =
         (New-Object -TypeName 'System.Collections.Generic.LinkedList[object]')
 
-    DocumentWriter($bookTemplate, $bookDocument, [string] $templateName) {
+    DocumentWriter($bookTemplate, $bookDocument, [string] $templateName, $target) {
         # コピー元のテンプレートを取得
         $sheetTemplate = $bookTemplate.WorkSheets.Item($templateName)
         # コピー
         [void]$sheetTemplate.Copy([System.Reflection.Missing]::Value, $bookDocument.WorkSheets.Item($bookDocument.WorkSheets.Count))
         # コピーしたシートの参照を取得
         $this.sheetDocument = $bookDocument.WorkSheets.Item($bookDocument.WorkSheets.Count)
+
+        # シートの名前
+        $text = $this.sheetDocument.Name
+        $replaced = $this.regexVarExp.Replace($text, $this.evalVarReplacer)
+        if ($text -ne $replaced) {
+            $this.sheetDocument.Name = $replaced.Trim()
+        }
 
         # 項番に初期値を設定
         $this.PushParagraph()
@@ -249,7 +256,7 @@ class DocumentWriter {
                 $text = $cell.Text
                 $replaced = $this.regexVarExp.Replace($text, $this.evalVarReplacer)
                 if ($text -ne $replaced) {
-                    $cell.Value = $replaced
+                    $cell.Value = $replaced.Trim()
 
                     # 遅延置換が必要か
                     if ($this.regexLateRep.IsMatch($replaced)) {
@@ -312,7 +319,7 @@ class DocumentWriter {
             $text = $cell.Text
             $replaced = $this.regexLateRep.Replace($text, $this.evalLateReplacer)
             if ($text -ne $replaced) {
-                $cell.Value = $replaced
+                $cell.Value = $replaced.Trim()
             }
         }
 

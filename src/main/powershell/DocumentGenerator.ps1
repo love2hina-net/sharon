@@ -242,7 +242,7 @@ class DocumentGenerator: System.IDisposable {
             }
 
             foreach ($target in $targetCursor) {
-                $docWriter = [DocumentWriter]::new($this.bookTemplate, $this.bookDocument, $entry.name)
+                $docWriter = [DocumentWriter]::new($this.bookTemplate, $this.bookDocument, $entry.name, $target)
 
                 foreach ($control in $entry.controls) {
                     # 制御文出力処理
