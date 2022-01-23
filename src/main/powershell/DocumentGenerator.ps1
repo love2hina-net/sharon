@@ -77,6 +77,11 @@ class DocumentGenerator: System.IDisposable {
         $this.bookDocument = $this.excel.Workbooks.Add($global:const.xlWorksheet)
         $this.MakeDocument()
 
+        # 元のファイルを削除する
+        if (Test-Path -Path $script:FileDocument -PathType Leaf) {
+            Remove-Item -Path $script:FileDocument
+        }
+
         # 保存する
         $this.bookDocument.SaveAs($script:FileDocument)
         $this.bookDocument.Close($false)
