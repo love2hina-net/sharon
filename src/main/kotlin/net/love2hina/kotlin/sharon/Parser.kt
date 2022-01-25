@@ -289,22 +289,76 @@ internal class Parser(
          * `class class_name`
          */
         override fun visit(n: ClassOrInterfaceDeclaration?, arg: Void?) {
-            val name = n!!.name.asString()
+            val className = n!!.name.asString()
 
-            // クラスの出力
+            // クラス情報
+            val classInfo = ClassInfo()
+
+            // 実体解析
+            // タイプパラメーター
+            n.typeParameters.forEach {
+                val name = it.name.asString()
+                classInfo.typeParameters[name] = TypeParameterInfo(name)
+            }
+
+            // コメントの解析
+            n.comment.ifPresent {
+                if (it.isJavadocComment) {
+                    val content = getCommentContents(it)
+                    var index = 0
+                    var name: String? = null
+
+                    // Javadocをパースする
+                    for (match in REGEXP_ANNOTATION.findAll(content)) {
+                        index = pushJavadocComment(content, name, index, match.range, classInfo)
+                        name = (match.groups as MatchNamedGroupCollection)["name"]!!.value
+                    }
+                    pushJavadocComment(content, name, index, IntRange(content.length, content.length), classInfo)
+                }
+                else if (it.isBlockComment) {
+                    val content = getCommentContents(it)
+                    classInfo.description.appendNewLine(content)
+                }
+                else {
+                    classInfo.description.appendNewLine(it.content)
+                }
+            }
+
+            // 出力開始
             writer.writeStartElement("class")
             writer.writeAttribute("modifier", getModifier(n.modifiers))
-            writer.writeAttribute("name", name)
-            writer.writeAttribute("fullname", packageStack.getFullName(name))
+            writer.writeAttribute("name", className)
+            writer.writeAttribute("fullname", packageStack.getFullName(className))
 
-            packageStack.push(name)
+            packageStack.push(className)
 
-            // コメント
-            n.comment.ifPresent { it.accept(this, arg) }
+            // Javadoc
+            writer.writeStartElement("javadoc")
+            writer.writeAttribute("since", classInfo.since)
+            writer.writeAttribute("deprecated", classInfo.deprecated)
+            writer.writeAttribute("serial", classInfo.serial)
+            writer.writeAttribute("version", classInfo.version)
+            classInfo.author.forEach {
+                writer.writeStartElement("author")
+                writer.writeStrings(it)
+                writer.writeEndElement()
+            }
+            writer.writeEndElement()
+            // 説明の出力
+            writer.writeStartElement("description")
+            writer.writeStrings(classInfo.description.toString())
+            writer.writeEndElement()
+            // タイプパラメーターの出力
+            classInfo.typeParameters.forEach {
+                writer.writeStartElement("typeParameter")
+                writer.writeAttribute("type", it.value.type)
+                writer.writeStrings(it.value.description)
+                writer.writeEndElement()
+            }
+
             // アノテーション
             n.annotations.forEach { it.accept(this, arg) }
-            // 型パラメータ
-            n.typeParameters.forEach { it.accept(this, arg) }
+
             // 継承クラス
             n.extendedTypes.forEach {
                 writer.writeEmptyElement("extends")
@@ -461,18 +515,7 @@ internal class Parser(
             n.comment.ifPresent {
                 if (it.isJavadocComment) {
                     // Javadocコメントから、*を取り除く
-                    val content = it.content.split(REGEXP_NEWLINE)
-                        .stream().map { l ->
-                            val m = REGEXP_BLOCK_COMMENT.find(l)
-                            if (m != null)
-                                (m.groups as MatchNamedGroupCollection)["content"]?.value ?: ""
-                            else l
-                        }
-                        .reduce(StringBuilder(),
-                            { b, l -> b.appendNewLine(l) },
-                            { b1, b2 -> b1.appendNewLine(b2) })
-                        .toString()
-
+                    val content = getCommentContents(it)
                     var index = 0
                     var name: String? = null
 
@@ -482,6 +525,13 @@ internal class Parser(
                         name = (match.groups as MatchNamedGroupCollection)["name"]!!.value
                     }
                     pushJavadocComment(content, name, index, IntRange(content.length, content.length), methodInfo)
+                }
+                else if (it.isBlockComment) {
+                    val content = getCommentContents(it)
+                    methodInfo.description.appendNewLine(content)
+                }
+                else {
+                    methodInfo.description.appendNewLine(it.content)
                 }
             }
 
@@ -541,69 +591,6 @@ internal class Parser(
             }
 
             writer.writeEndElement()
-        }
-
-        private fun pushJavadocComment(content: String, name: String?, start: Int, range: IntRange,
-                                       methodInfo: MethodInfo): Int {
-
-            if (start < range.start) {
-                val value = content.substring(start, range.start).trim()
-
-                when (name) {
-                    "param" -> {
-                        val r = Regex("^(?:(?<name>\\w+)|<(?<type>\\w+)>)(?:\\s+(?<desc>.*))?$")
-                        val m = r.find(value)
-
-                        if (m != null) {
-                            val groups = (m.groups as MatchNamedGroupCollection)
-
-                            val paramName = groups["name"]?.value
-                            val paramType = groups["type"]?.value
-                            val paramDesc = groups["desc"]?.value ?: ""
-
-                            if (paramName != null) {
-                                val paramInfo = methodInfo.parameters.getOrPut(paramName)
-                                    { ParameterInfo("", "", paramName) }
-
-                                paramInfo.description = paramDesc
-                            }
-                            else if (paramType != null) {
-                                val typeParameterInfo = methodInfo.typeParameters.getOrPut(paramType)
-                                    { TypeParameterInfo(paramType) }
-
-                                typeParameterInfo.description = paramDesc
-                            }
-                        }
-                    }
-                    "return" -> {
-                        val resultInfo: ReturnInfo = methodInfo.result ?: ReturnInfo()
-
-                        resultInfo.description = value
-                        methodInfo.result = resultInfo
-                    }
-                    "throws" -> {
-                        val r = Regex("^(?<name>\\w+)(?:\\s+(?<desc>.*))?$")
-                        val m = r.find(value)
-
-                        if (m != null) {
-                            val groups = (m.groups as MatchNamedGroupCollection)
-
-                            val expType = groups["name"]!!.value
-                            val expDesc = groups["desc"]?.value ?: ""
-
-                            val throwsInfo = methodInfo.throws.getOrPut(expType)
-                                { ThrowsInfo(expType) }
-
-                            throwsInfo.description = expDesc
-                        }
-                    }
-                    else -> {
-                        methodInfo.description.appendNewLine(value)
-                    }
-                }
-            }
-
-            return range.endInclusive + 1
         }
 
         /**

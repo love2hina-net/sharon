@@ -138,16 +138,16 @@ internal class SmartXMLStreamWriter(file: File): XMLStreamWriter, Closeable {
         xmlWriter.writeNamespace(prefix, namespaceURI)
     }
 
-    override fun writeAttribute(localName: String?, value: String?) {
-        xmlWriter.writeAttribute(localName, value)
+    override fun writeAttribute(localName: String, value: String?) {
+        if (value != null) xmlWriter.writeAttribute(localName, value)
     }
 
-    override fun writeAttribute(namespaceURI: String?, localName: String?, value: String?) {
-        xmlWriter.writeAttribute(namespaceURI, localName, value)
+    override fun writeAttribute(namespaceURI: String?, localName: String, value: String?) {
+        if (value != null) xmlWriter.writeAttribute(namespaceURI, localName, value)
     }
 
-    override fun writeAttribute(prefix: String?, namespaceURI: String?, localName: String?, value: String?) {
-        xmlWriter.writeAttribute(prefix, namespaceURI, localName, value)
+    override fun writeAttribute(prefix: String?, namespaceURI: String?, localName: String, value: String?) {
+        if (value != null) xmlWriter.writeAttribute(prefix, namespaceURI, localName, value)
     }
 
     override fun writeComment(data: String?) {
