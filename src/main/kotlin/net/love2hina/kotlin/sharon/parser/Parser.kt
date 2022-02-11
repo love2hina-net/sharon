@@ -1,4 +1,4 @@
-package net.love2hina.kotlin.sharon
+package net.love2hina.kotlin.sharon.parser
 
 import com.github.javaparser.Position
 import com.github.javaparser.Range
@@ -11,13 +11,13 @@ import com.github.javaparser.ast.modules.*
 import com.github.javaparser.ast.stmt.*
 import com.github.javaparser.ast.type.*
 import com.github.javaparser.ast.visitor.VoidVisitor
+import net.love2hina.kotlin.sharon.*
 import net.love2hina.kotlin.sharon.data.*
 import net.love2hina.kotlin.sharon.entity.FileMap
 
 import java.io.File
 import java.lang.Integer.compare
 import java.nio.charset.StandardCharsets.UTF_8
-import java.util.Optional
 
 internal class Parser(
     val fileSrc: File,
@@ -52,11 +52,11 @@ internal class Parser(
         }
     }
 
-    private inner class Visitor(
-        val writer: SmartXMLStreamWriter
+    internal inner class Visitor(
+        internal val writer: SmartXMLStreamWriter
     ): VoidVisitor<Void> {
 
-        private val packageStack = PackageStack()
+        internal val packageStack = PackageStack()
 
         /**
          * コンパイル単位.
@@ -283,98 +283,7 @@ internal class Parser(
             //        n.getComment().ifPresent(l -> l.accept(this, arg));
         }
 
-        /**
-         * クラス定義.
-         *
-         * `class class_name`
-         */
-        override fun visit(n: ClassOrInterfaceDeclaration?, arg: Void?) {
-            val className = n!!.name.asString()
-
-            // クラス情報
-            val classInfo = ClassInfo()
-
-            // 実体解析
-            // タイプパラメーター
-            n.typeParameters.forEach {
-                val name = it.name.asString()
-                classInfo.typeParameters[name] = TypeParameterInfo(name)
-            }
-
-            // コメントの解析
-            n.comment.ifPresent {
-                if (it.isJavadocComment) {
-                    val content = getCommentContents(it)
-                    var index = 0
-                    var name: String? = null
-
-                    // Javadocをパースする
-                    for (match in REGEXP_ANNOTATION.findAll(content)) {
-                        index = pushJavadocComment(content, name, index, match.range, classInfo)
-                        name = (match.groups as MatchNamedGroupCollection)["name"]!!.value
-                    }
-                    pushJavadocComment(content, name, index, IntRange(content.length, content.length), classInfo)
-                }
-                else if (it.isBlockComment) {
-                    val content = getCommentContents(it)
-                    classInfo.description.appendNewLine(content)
-                }
-                else {
-                    classInfo.description.appendNewLine(it.content)
-                }
-            }
-
-            // 出力開始
-            writer.writeStartElement("class")
-            writer.writeAttribute("modifier", getModifier(n.modifiers))
-            writer.writeAttribute("name", className)
-            writer.writeAttribute("fullname", packageStack.getFullName(className))
-
-            packageStack.push(className)
-
-            // Javadoc
-            writer.writeStartElement("javadoc")
-            writer.writeAttribute("since", classInfo.since)
-            writer.writeAttribute("deprecated", classInfo.deprecated)
-            writer.writeAttribute("serial", classInfo.serial)
-            writer.writeAttribute("version", classInfo.version)
-            classInfo.author.forEach {
-                writer.writeStartElement("author")
-                writer.writeStrings(it)
-                writer.writeEndElement()
-            }
-            writer.writeEndElement()
-            // 説明の出力
-            writer.writeStartElement("description")
-            writer.writeStrings(classInfo.description.toString())
-            writer.writeEndElement()
-            // タイプパラメーターの出力
-            classInfo.typeParameters.forEach {
-                writer.writeStartElement("typeParameter")
-                writer.writeAttribute("type", it.value.type)
-                writer.writeStrings(it.value.description)
-                writer.writeEndElement()
-            }
-
-            // アノテーション
-            n.annotations.forEach { it.accept(this, arg) }
-
-            // 継承クラス
-            n.extendedTypes.forEach {
-                writer.writeEmptyElement("extends")
-                writer.writeAttribute("name", it.name.asString())
-            }
-            // インターフェース
-            n.implementedTypes.forEach {
-                writer.writeEmptyElement("implements")
-                writer.writeAttribute("name", it.name.asString())
-            }
-            // メンバー
-            n.members.forEach { it.accept(this, arg) }
-
-            packageStack.pop()
-            writer.writeEndElement()
-        }
+        override fun visit(n: ClassOrInterfaceDeclaration?, arg: Void?) = visitInClass(n!!, arg)
 
         /**
          * レコード定義.
@@ -472,126 +381,7 @@ internal class Parser(
             //        n.getComment().ifPresent(l -> l.accept(this, arg));
         }
 
-        /**
-         * 関数定義.
-         */
-        override fun visit(n: MethodDeclaration?, arg: Void?) {
-            n!!
-
-            // メソッド情報
-            val methodInfo = MethodInfo()
-
-            // 実体解析
-            // タイプパラメーター
-            n.typeParameters.forEach {
-                val name = it.name.asString()
-                methodInfo.typeParameters[name] = TypeParameterInfo(name)
-            }
-            // 明示的なthisパラメーター
-            n.receiverParameter.ifPresent {
-                val name = it.name.asString()
-                methodInfo.parameters[name] = ParameterInfo("", it.type.asString(), name)
-            }
-            // パラメーター
-            n.parameters.forEach {
-                val name = it.name.asString()
-                methodInfo.parameters[name] = ParameterInfo(
-                    getModifier(it.modifiers),
-                    it.type.asString(),
-                    name
-                )
-            }
-            // 戻り値
-            if (!n.type.isVoidType) {
-                methodInfo.result = ReturnInfo(n.type.asString())
-            }
-            // 例外
-            n.thrownExceptions.forEach {
-                val type = it.asString()
-                methodInfo.throws[type] = ThrowsInfo(type)
-            }
-
-            // コメントの解析
-            n.comment.ifPresent {
-                if (it.isJavadocComment) {
-                    // Javadocコメントから、*を取り除く
-                    val content = getCommentContents(it)
-                    var index = 0
-                    var name: String? = null
-
-                    // Javadocをパースする
-                    for (match in REGEXP_ANNOTATION.findAll(content)) {
-                        index = pushJavadocComment(content, name, index, match.range, methodInfo)
-                        name = (match.groups as MatchNamedGroupCollection)["name"]!!.value
-                    }
-                    pushJavadocComment(content, name, index, IntRange(content.length, content.length), methodInfo)
-                }
-                else if (it.isBlockComment) {
-                    val content = getCommentContents(it)
-                    methodInfo.description.appendNewLine(content)
-                }
-                else {
-                    methodInfo.description.appendNewLine(it.content)
-                }
-            }
-
-            // 出力開始
-            writer.writeStartElement("method")
-            writer.writeAttribute("modifier", getModifier(n.modifiers))
-            writer.writeAttribute("name", n.name.asString())
-
-            // 定義全体
-            writer.writeStartElement("definition")
-            writer.writeStrings(n.getDeclarationAsString(true, true, true))
-            writer.writeEndElement()
-
-            // 説明の出力
-            writer.writeStartElement("description")
-            writer.writeStrings(methodInfo.description.toString())
-            writer.writeEndElement()
-            // タイプパラメーターの出力
-            methodInfo.typeParameters.forEach {
-                writer.writeStartElement("typeParameter")
-                writer.writeAttribute("type", it.value.type)
-                writer.writeStrings(it.value.description)
-                writer.writeEndElement()
-            }
-            // パラメーターの出力
-            methodInfo.parameters.forEach {
-                writer.writeStartElement("parameter")
-                writer.writeAttribute("modifier", it.value.modifier)
-                writer.writeAttribute("type", it.value.type)
-                writer.writeAttribute("name", it.value.name)
-                writer.writeStrings(it.value.description)
-                writer.writeEndElement()
-            }
-            // 戻り値の出力
-            methodInfo.result?.let {
-                writer.writeStartElement("return")
-                writer.writeAttribute("type", it.type)
-                writer.writeStrings(it.description)
-                writer.writeEndElement()
-            }
-            // 例外の出力
-            methodInfo.throws.forEach {
-                writer.writeStartElement("throws")
-                writer.writeAttribute("type", it.value.type)
-                writer.writeStrings(it.value.description)
-                writer.writeEndElement()
-            }
-
-            // アノテーション
-            n.annotations.forEach { it.accept(this, arg) }
-
-            // ステートメント
-            n.body.ifPresent {
-                writer.writeStartElement("code")
-                it.accept(this, arg)
-                writer.writeEndElement()
-            }
-
-            writer.writeEndElement()
-        }
+        override fun visit(n: MethodDeclaration?, arg: Void?) = visitInFunction(n!!, arg)
 
         /**
          * 明示的なthisパラメータ.
@@ -727,121 +517,8 @@ internal class Parser(
             n!!.comment.ifPresent { it.accept(this, arg) }
         }
 
-        /**
-         * Ifステートメント.
-         */
-        override fun visit(n: IfStmt?, arg: Void?) {
-            n!!
-
-            // 条件分岐の出力
-            writer.writeStartElement("condition")
-            writer.writeAttribute("type", "if")
-
-            // 第1条件
-            writer.writeStartElement("case")
-
-            // コメント
-            n.comment.ifPresent { it.accept(this, arg) }
-            // 条件
-            writer.writeStartElement("expr")
-            writer.writeStrings(n.condition.toString())
-            writer.writeEndElement()
-            // 本文
-            writer.writeStartElement("code")
-            n.thenStmt.accept(this, arg)
-            writer.writeEndElement()
-
-            writer.writeEndElement()
-
-            // 継続条件
-            visitInElse(n.elseStmt, arg)
-
-            writer.writeEndElement()
-        }
-
-        /**
-         * Elseステートメント.
-         */
-        private fun visitInElse(n: Optional<Statement>, arg: Void?) {
-
-            n.ifPresent { e ->
-                if (e is IfStmt) {
-                    // 継続条件(else if)
-                    writer.writeStartElement("case")
-
-                    // コメント
-                    e.comment.ifPresent { it.accept(this, arg) }
-                    // 条件
-                    writer.writeStartElement("expr")
-                    writer.writeStrings(e.condition.toString())
-                    writer.writeEndElement()
-                    // 本文
-                    writer.writeStartElement("code")
-                    e.thenStmt.accept(this, arg)
-                    writer.writeEndElement()
-
-                    writer.writeEndElement()
-
-                    // 継続条件(再帰呼び出し)
-                    visitInElse(e.elseStmt, arg)
-                }
-                else {
-                    // 条件なし(else)
-                    writer.writeStartElement("case")
-
-                    // コメント
-                    e.comment.ifPresent { it.accept(this, arg) }
-                    // 本文
-                    writer.writeStartElement("code")
-                    e.accept(this, arg)
-                    writer.writeEndElement()
-
-                    writer.writeEndElement()
-                }
-            }
-        }
-
-        /**
-         * switchステートメント.
-         */
-        override fun visit(n: SwitchStmt?, arg: Void?) {
-            n!!
-
-            // コメント
-            n.comment.ifPresent { it.accept(this, arg) }
-
-            // 条件分岐の出力
-            writer.writeStartElement("condition")
-            writer.writeAttribute("type", "switch")
-            writer.writeAttribute("selector", n.selector.toString())
-
-            var caseContinue = false
-
-            // 条件エントリ
-            for (i in n.entries) {
-                if (!caseContinue)
-                    writer.writeStartElement("case")
-
-                // コメント
-                i.comment.ifPresent { it.accept(this, arg) }
-                // 条件
-                i.labels.forEach {
-                    writer.writeStartElement("expr")
-                    writer.writeStrings(it.toString())
-                    writer.writeEndElement()
-                }
-                // 本文
-                writer.writeStartElement("code")
-                i.statements.forEach { it.accept(this, arg) }
-                writer.writeEndElement()
-
-                caseContinue = i.statements.isEmpty()
-                if (!caseContinue)
-                    writer.writeEndElement()
-            }
-
-            writer.writeEndElement()
-        }
+        override fun visit(n: IfStmt?, arg: Void?) = visitInIf(n!!, arg)
+        override fun visit(n: SwitchStmt?, arg: Void?) = visitInSwitch(n!!, arg)
 
         /**
          * caseステートメント.
@@ -851,108 +528,10 @@ internal class Parser(
             throw IllegalAccessException()
         }
 
-        /**
-         * forステートメント.
-         */
-        override fun visit(n: ForStmt?, arg: Void?) {
-            n!!
-
-            writer.writeStartElement("loop")
-            writer.writeAttribute("type", "for")
-
-            // コメント
-            n.comment.ifPresent { it.accept(this, arg) }
-            // 初期化子
-            n.initialization.forEach {
-                writer.writeEmptyElement("initializer")
-                writer.writeAttribute("expr", it.toString())
-            }
-            // 条件
-            n.compare.ifPresent {
-                writer.writeEmptyElement("compare")
-                writer.writeAttribute("expr", it.toString())
-            }
-            // 更新
-            n.update.forEach {
-                writer.writeEmptyElement("update")
-                writer.writeAttribute("expr", it.toString())
-            }
-            // 本文
-            writer.writeStartElement("code")
-            n.body.accept(this, arg)
-            writer.writeEndElement()
-
-            writer.writeEndElement()
-        }
-
-        /**
-         * for eachステートメント.
-         */
-        override fun visit(n: ForEachStmt?, arg: Void?) {
-            n!!
-
-            writer.writeStartElement("loop")
-            writer.writeAttribute("type", "for-each")
-
-            // コメント
-            n.comment.ifPresent { it.accept(this, arg) }
-            // イテレータ
-            writer.writeEmptyElement("iterator")
-            writer.writeAttribute("expression", n.iterable.toString())
-            // 変数
-            writer.writeEmptyElement("variable")
-            writer.writeAttribute("expression", n.variable.toString())
-            // 本文
-            writer.writeStartElement("code")
-            n.body.accept(this, arg)
-            writer.writeEndElement()
-
-            writer.writeEndElement()
-        }
-
-        /**
-         * whileステートメント.
-         */
-        override fun visit(n: WhileStmt?, arg: Void?) {
-            n!!
-
-            writer.writeStartElement("loop")
-            writer.writeAttribute("type", "while")
-
-            // コメント
-            n.comment.ifPresent { it.accept(this, arg) }
-            // 条件
-            writer.writeEmptyElement("condition")
-            writer.writeAttribute("expr", n.condition.toString())
-            // 本文
-            writer.writeStartElement("code")
-            n.body.accept(this, arg)
-            writer.writeEndElement()
-
-            writer.writeEndElement()
-        }
-
-        /**
-         * do~whileステートメント.
-         */
-        override fun visit(n: DoStmt?, arg: Void?) {
-            n!!
-
-            writer.writeStartElement("loop")
-            writer.writeAttribute("type", "do")
-
-            // コメント
-            n.comment.ifPresent { it.accept(this, arg) }
-            // 条件
-            writer.writeEmptyElement("condition")
-            writer.writeAttribute("expr", n.condition.toString())
-            // 本文
-            writer.writeStartElement("code")
-            n.body.accept(this, arg)
-            writer.writeEndElement()
-
-            writer.writeEndElement()
-        }
+        override fun visit(n: ForStmt?, arg: Void?) = visitInFor(n!!, arg)
+        override fun visit(n: ForEachStmt?, arg: Void?) = visitInForEach(n!!, arg)
+        override fun visit(n: WhileStmt?, arg: Void?) = visitInWhile(n!!, arg)
+        override fun visit(n: DoStmt?, arg: Void?) = visitInDo(n!!, arg)
 
         /**
          * breakステートメント.
