@@ -53,6 +53,17 @@ internal fun Parser.Visitor.visitInClass(n: ClassOrInterfaceDeclaration, arg: Vo
 
     packageStack.push(className)
 
+    // 継承クラス
+    n.extendedTypes.forEach {
+        writer.writeEmptyElement("extends")
+        writer.writeAttribute("name", it.name.asString())
+    }
+    // インターフェース
+    n.implementedTypes.forEach {
+        writer.writeEmptyElement("implements")
+        writer.writeAttribute("name", it.name.asString())
+    }
+
     // Javadoc
     writer.writeStartElement("javadoc")
     writer.writeAttribute("since", classInfo.since)
@@ -80,16 +91,6 @@ internal fun Parser.Visitor.visitInClass(n: ClassOrInterfaceDeclaration, arg: Vo
     // アノテーション
     n.annotations.forEach { it.accept(this, arg) }
 
-    // 継承クラス
-    n.extendedTypes.forEach {
-        writer.writeEmptyElement("extends")
-        writer.writeAttribute("name", it.name.asString())
-    }
-    // インターフェース
-    n.implementedTypes.forEach {
-        writer.writeEmptyElement("implements")
-        writer.writeAttribute("name", it.name.asString())
-    }
     // メンバー
     n.members.forEach { it.accept(this, arg) }
 

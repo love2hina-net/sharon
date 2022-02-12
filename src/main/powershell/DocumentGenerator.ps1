@@ -112,11 +112,11 @@ class DocumentGenerator: System.IDisposable {
                         # パラメーター展開
                         [string[]] $params = @()
                         foreach ($i in $match.Groups) {
-                            $_values = [Enumerable]::Select($i.Captures, [Func[Capture, string]] {
-                                param([Capture] $capture)
-                                return $capture.Value
-                            })
-                            $params += [Enumerable]::ToArray($_values)
+                            $params += [Enumerable]::ToArray(
+                                [Enumerable]::Select($i.Captures, [Func[Capture, string]] {
+                                    param([Capture] $capture)
+                                    return $capture.Value
+                            }))
                         }
 
                         # 制御文

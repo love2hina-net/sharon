@@ -1,4 +1,5 @@
-﻿using namespace System.Xml.XPath
+﻿using namespace System.Linq
+using namespace System.Xml.XPath
 
 #region 対象情報
 
@@ -7,35 +8,80 @@ class TargetInfo {
     # ノード
     [XPathNavigator] $node
 
-    TargetInfo([XPathNavigator]$node) {
+    # 変換用
+    hidden static [System.Reflection.MethodInfo] $funcCast = [System.Linq.Enumerable].GetMethod('Cast').MakeGenericMethod([XPathNavigator])
+    hidden static [Func[XPathNavigator, string]] $funcSelectValue = {
+        param([XPathNavigator] $node)
+        return $node.Value
+    }
+
+    TargetInfo([XPathNavigator] $node) {
         $this.node = $node
+    }
+
+    static [string[]] EvaluateStringArray([XPathNavigator] $node, [string] $query) {
+        return [Enumerable]::ToArray(
+            [Enumerable]::Select([TargetInfo]::funcCast.Invoke($null, @(, $node.Evaluate($query))), [TargetInfo]::funcSelectValue))
     }
 
 }
 
 class ClassTargetInfo : TargetInfo {
 
-    # コメント
-    [string] $comment
     # 修飾子
     [string] $modifier
     # 名前
     [string] $name
     # 完全名
     [string] $fullname
+    # 継承
+    [string[]] $extends
+    # インターフェース
+    [string[]] $implements
 
+    # since(Javadoc)
+    [string] $since
+    # deprecated(Javadoc)
+    [string] $deprecated
+    # serial(Javadoc)
+    [string] $serial
+    # version(Javadoc)
+    [string] $version
+    # author(Javadoc)
+    [string[]] $author
+
+    # 説明
+    [string] $description
+
+    # 型引数
+    [TargetEnumerable] $typeParameters
     # フィールド
     [TargetEnumerable] $fields
     # メソッド
     [TargetEnumerable] $methods
 
-    ClassTargetInfo([XPathNavigator]$node) : base($node) {
+    ClassTargetInfo([XPathNavigator] $node) : base($node) {
 
-        $this.comment = $node.Evaluate('comment/text()')
         $this.modifier = $node.Evaluate('@modifier')
         $this.name = $node.Evaluate('@name')
         $this.fullname = $node.Evaluate('@fullname')
 
+        $this.extends = [TargetInfo]::EvaluateStringArray($node, 'extends/@name')
+        $this.implements = [TargetInfo]::EvaluateStringArray($node, 'implements/@name')
+
+        $this.since = $node.Evaluate('javadoc/@since')
+        $this.deprecated = $node.Evaluate('javadoc/@deprecated')
+        $this.serial = $node.Evaluate('javadoc/@serial')
+        $this.version = $node.Evaluate('javadoc/@version')
+
+        $this.author = [TargetInfo]::EvaluateStringArray($node, 'javadoc/author/text()')
+
+        $this.description = $node.Evaluate('description/text()')
+
+        $this.typeParameters = [TargetEnumerable]::new($node, 'typeParameter', [Func[XPathNavigator, TargetInfo]]{
+            param([XPathNavigator] $_node)
+            return [TypeParameterTargetInfo]::new($_node)
+        })
         $this.fields = [TargetEnumerable]::new($node, 'field', [Func[XPathNavigator, TargetInfo]]{
             param([XPathNavigator] $_node)
             return [FieldTargetInfo]::new($_node)
@@ -61,7 +107,7 @@ class FieldTargetInfo : TargetInfo {
     # 初期値
     [string] $value
 
-    FieldTargetInfo([XPathNavigator]$node) : base($node) {
+    FieldTargetInfo([XPathNavigator] $node) : base($node) {
 
         $this.comment = $node.Evaluate('comment/text()')
         $this.modifier = $node.Evaluate('@modifier')
@@ -92,7 +138,7 @@ class MethodTargetInfo : TargetInfo {
     # 例外
     [TargetEnumerable] $throws
 
-    MethodTargetInfo([XPathNavigator]$node) : base($node) {
+    MethodTargetInfo([XPathNavigator] $node) : base($node) {
 
         $this.comment = $node.Evaluate('description/text()')
         $this.modifier = $node.Evaluate('@modifier')
@@ -126,7 +172,7 @@ class TypeParameterTargetInfo : TargetInfo {
     # 型名
     [string] $type
 
-    TypeParameterTargetInfo([XPathNavigator]$node) : base($node) {
+    TypeParameterTargetInfo([XPathNavigator] $node) : base($node) {
 
         $this.comment = $node.Evaluate('text()')
         $this.type = $node.Evaluate('@type')
@@ -145,7 +191,7 @@ class ParameterTargetInfo : TargetInfo {
     # 名前
     [string] $name
 
-    ParameterTargetInfo([XPathNavigator]$node) : base($node) {
+    ParameterTargetInfo([XPathNavigator] $node) : base($node) {
 
         $this.comment = $node.Evaluate('text()')
         $this.modifier = $node.Evaluate('@modifier')
@@ -162,7 +208,7 @@ class ReturnTargetInfo : TargetInfo {
     # 型名
     [string] $type
 
-    ReturnTargetInfo([XPathNavigator]$node) : base($node) {
+    ReturnTargetInfo([XPathNavigator] $node) : base($node) {
 
         $this.comment = $node.Evaluate('text()')
         $this.type = $node.Evaluate('@type')
@@ -177,7 +223,7 @@ class ThrowsTargetInfo : TargetInfo {
     # 型名
     [string] $type
 
-    ThrowsTargetInfo([XPathNavigator]$node) : base($node) {
+    ThrowsTargetInfo([XPathNavigator] $node) : base($node) {
 
         $this.comment = $node.Evaluate('text()')
         $this.type = $node.Evaluate('@type')
@@ -192,7 +238,7 @@ class DescriptionTargetInfo : TargetInfo {
     # 記述
     [string] $description
 
-    DescriptionTargetInfo([XPathNavigator]$node, $docWriter) : base($node) {
+    DescriptionTargetInfo([XPathNavigator] $node, $docWriter) : base($node) {
 
         [string] $desc = $node.Evaluate('text()')
         if ($desc -match '^#\s?(\S+)') {
@@ -217,7 +263,7 @@ class AssignmentTargetInfo : TargetInfo {
     # 設定値
     [string] $value
 
-    AssignmentTargetInfo([XPathNavigator]$node) : base($node) {
+    AssignmentTargetInfo([XPathNavigator] $node) : base($node) {
 
         $this.var = $node.Evaluate('@var')
         $this.value = $node.Evaluate('@value')
@@ -236,7 +282,7 @@ class ConditionTargetInfo : TargetInfo {
     # 記述
     [string] $description
 
-    ConditionTargetInfo([XPathNavigator]$node, [string]$number, [int]$index) : base($node) {
+    ConditionTargetInfo([XPathNavigator] $node, [string] $number, [int] $index) : base($node) {
 
         $this.index = $index
         $this.number = [string]::Format('{0}.{1}', $number, $index)
@@ -358,7 +404,7 @@ class ConditionTargetEnumerable : TargetEnumerable {
     # 段落番号
     [string] $number
 
-    ConditionTargetEnumerable([XPathNavigator]$node, [string]$number) : base($node, 'case', $null) {
+    ConditionTargetEnumerable([XPathNavigator] $node, [string] $number) : base($node, 'case', $null) {
         $this.number = $number
     }
 
@@ -375,7 +421,7 @@ class ConditionTargetEnumerator : TargetEnumerator {
     # 段落番号
     [string] $number
 
-    ConditionTargetEnumerator([ConditionTargetEnumerable] $parent, [string]$number)
+    ConditionTargetEnumerator([ConditionTargetEnumerable] $parent, [string] $number)
      : base($parent, [Func[XPathNavigator, TargetInfo]]{
             param([XPathNavigator] $node)
             return [ConditionTargetInfo]::new($node, $this.number, ++$this.index)

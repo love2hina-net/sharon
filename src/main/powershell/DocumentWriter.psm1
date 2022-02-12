@@ -44,7 +44,12 @@ class DocumentWriter {
     [MatchEvaluator] $evalVarReplacer = {
         param([Match] $match)
         # 置き換え
-        return (Invoke-Expression ('$target.' + "$($match.Groups[1].Value)"))
+        if ($match.Groups[1].Value -eq '_') {
+            return Invoke-Expression '$target'
+        }
+        else {
+            return Invoke-Expression ('$target.' + "$($match.Groups[1].Value)")
+        }
     }
 
     # 遅延置換Regex
