@@ -265,3 +265,7 @@ Write-Debug "[DocumentGenerator] $FileTemplate, $FileXml, $FileDocument"
 $generator = [DocumentGenerator]::new()
 $generator.GenerateDocument()
 $generator.Dispose()
+$generator = $null
+
+# 強制的にリリース(Excelプロセスが残り続けるため)
+[System.GC]::Collect()

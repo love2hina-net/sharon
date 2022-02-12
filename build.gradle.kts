@@ -35,7 +35,7 @@ plugins {
 }
 
 group = "net.love2hina"
-version = "0.1.0-SNAPSHOT"
+version = "0.2.0-SNAPSHOT"
 
 val versions: Map<String, Any> by extra
 

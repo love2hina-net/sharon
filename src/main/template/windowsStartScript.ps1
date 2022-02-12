@@ -1,13 +1,24 @@
 <#
 .SYNOPSIS
-    the document generation tool(${applicationName})
+    コードドキュメントジェネレーター(${applicationName})
 .DESCRIPTION
-    the code parser(${applicationName}) launching script.
+    コードパーサー(${applicationName})を起動し、解析情報ファイル(XML)を出力します。
 .NOTES
     This project was released under the MIT License.
 #>
 
-# change code page UTF-8(65001)
+param(
+    # 解析対象となるJavaソースコードを指定します。
+    # ディレクトリや.javaファイル自体を直接指定出来ます。
+    [Parameter(Mandatory=\$true)]
+    [string[]] \$Path,
+
+    # XMLの出力先ディレクトリを指定します。
+    [Parameter(Mandatory=\$true)]
+    [string] \$OutputDirectory
+)
+
+# コードページの変更 UTF-8(65001)
 [void](chcp 65001)
 
 \$dirName = \$PSScriptRoot
@@ -31,7 +42,7 @@ else {
     }
 }
 
-# Execute ${applicationName}
+# ${applicationName}の実行
 . "\$javaExe" \$defaultJvmOpts \$env:JAVA_OPTS <% if ( appNameSystemProperty ) { %>"-D${appNameSystemProperty}=\$appNameBase"<% } %> `
     -classpath "${classpath}" `
-    <% if ( mainClassName.startsWith('--module ') ) { %>--module-path "${modulePath}" <% } %>'${mainClassName}' \$args
+    <% if ( mainClassName.startsWith('--module ') ) { %>--module-path "${modulePath}" <% } %>'${mainClassName}' '--outdir' \$OutputDirectory '--' \$Path
