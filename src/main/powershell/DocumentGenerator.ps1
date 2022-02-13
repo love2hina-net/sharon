@@ -219,7 +219,7 @@ class DocumentGenerator: System.IDisposable {
             switch ($entry.type) {
                 'once' {
                     # なし
-                    $targetCursor = [TargetEnumerable]::new()
+                    $targetCursor = @(@{})
                 }
                 'file' {
                     # ファイル情報
