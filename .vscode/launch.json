@@ -9,7 +9,7 @@
             "type": "PowerShell",
             "request": "launch",
             "script": "${workspaceFolder}/src/main/powershell/ganan.ps1",
-            "args": ["-Path test\\out", "-Template template\\test.xlsm", "-OutputDirectory test\\doc", "-Debug", "-Verbose", "-ErrorAction Break"],
+            "args": ["-Path test\\out", "-Template template\\test.xlsx", "-OutputDirectory test\\doc", "-Debug", "-Verbose", "-ErrorAction Break"],
             "cwd": "${workspaceFolder}"
         },
         {
@@ -17,7 +17,7 @@
             "type": "PowerShell",
             "request": "launch",
             "script": "${workspaceFolder}/src/main/powershell/DocumentGenerator.ps1",
-            "args": ["-FileTemplate ${workspaceFolder}\\template\\test.xlsm", "-FileXml ${workspaceFolder}\\test\\out\\9a7e5c4b91e244cf6b90107c73855e03f577983582eddf5bcdfc1460c609c0c7_000.xml", "-FileDocument ${workspaceFolder}\\test\\test.xlsx", "-Debug", "-Verbose", "-ErrorAction Break"],
+            "args": ["-FileTemplate ${workspaceFolder}\\template\\test.xlsx", "-FileXml ${workspaceFolder}\\test\\out\\9a7e5c4b91e244cf6b90107c73855e03f577983582eddf5bcdfc1460c609c0c7_000.xml", "-FileDocument ${workspaceFolder}\\test\\generate.xlsx", "-Debug", "-Verbose", "-ErrorAction Break"],
             "cwd": "${workspaceFolder}"
         },
         {

@@ -222,8 +222,11 @@ class DocumentGenerator: System.IDisposable {
                     $targetCursor = [TargetEnumerable]::new()
                 }
                 'file' {
-                    # TODO: ファイル情報のみ
-                    $targetCursor = [TargetEnumerable]::new()
+                    # ファイル情報
+                    $targetCursor = [RootTargetEnumerable]::new($parent, 'file', [Func[XPathNavigator, TargetInfo]]{
+                        param([XPathNavigator] $node)
+                        return [FileTargetInfo]::new($node)
+                    })
                 }
                 'class' {
                     # クラス情報

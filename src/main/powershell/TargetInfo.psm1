@@ -26,6 +26,35 @@ class TargetInfo {
 
 }
 
+class FileTargetInfo : TargetInfo {
+
+    # 言語
+    [string] $language
+    # ファイル
+    [string] $src
+    # パッケージ宣言
+    [string] $package
+    # インポート
+    [string[]] $imports
+
+    # クラス
+    [TargetEnumerable] $classes
+
+    FileTargetInfo([XPathNavigator] $node) : base($node) {
+
+        $this.language = $node.Evaluate('@language')
+        $this.src = $node.Evaluate('@src')
+        $this.package = $node.Evaluate('package/@package')
+        $this.imports = [TargetInfo]::EvaluateStringArray($node, 'import/@package')
+
+        $this.classes = [TargetEnumerable]::new($node, 'class', [Func[XPathNavigator, TargetInfo]]{
+            param([XPathNavigator] $_node)
+            return [ClassTargetInfo]::new($_node)
+        })
+    }
+
+}
+
 class ClassTargetInfo : TargetInfo {
 
     # 修飾子
