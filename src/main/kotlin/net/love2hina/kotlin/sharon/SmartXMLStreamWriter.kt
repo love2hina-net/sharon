@@ -34,8 +34,7 @@ internal class SmartXMLStreamWriter(file: File): XMLStreamWriter, Closeable {
 
     private fun outputIndent() {
         xmlWriter.writeCharacters(lineSeparator)
-        if (level > 0)
-            xmlWriter.writeCharacters(" ".repeat(indentSize * level))
+        if (level > 0) { xmlWriter.writeCharacters(" ".repeat(indentSize * level)) }
     }
 
     private fun outputElementBody() {
@@ -139,15 +138,15 @@ internal class SmartXMLStreamWriter(file: File): XMLStreamWriter, Closeable {
     }
 
     override fun writeAttribute(localName: String, value: String?) {
-        if (value != null) xmlWriter.writeAttribute(localName, value)
+        if (value != null) { xmlWriter.writeAttribute(localName, value) }
     }
 
     override fun writeAttribute(namespaceURI: String?, localName: String, value: String?) {
-        if (value != null) xmlWriter.writeAttribute(namespaceURI, localName, value)
+        if (value != null) { xmlWriter.writeAttribute(namespaceURI, localName, value) }
     }
 
     override fun writeAttribute(prefix: String?, namespaceURI: String?, localName: String, value: String?) {
-        if (value != null) xmlWriter.writeAttribute(prefix, namespaceURI, localName, value)
+        if (value != null) { xmlWriter.writeAttribute(prefix, namespaceURI, localName, value) }
     }
 
     override fun writeComment(data: String?) {
@@ -179,7 +178,7 @@ internal class SmartXMLStreamWriter(file: File): XMLStreamWriter, Closeable {
             else -> {
                 // 複数行出力
                 lines.stream()
-                    .forEach{
+                    .forEach {
                         outputElementBody()
                         xmlWriter.writeCharacters(it.trim())
                     }

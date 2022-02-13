@@ -50,7 +50,13 @@ class DocumentGenerator: System.IDisposable {
     hidden [XPathNavigator] $xpath
 
     DocumentGenerator() {
-        $this.excel.Visible = $true
+        if ($global:DebugPreference -ne 'SilentlyContinue') {
+            # デバッグが有効なら表示する
+            $this.excel.Visible = $true
+        }
+
+        # 警告表示を無効化
+        $this.excel.DisplayAlerts = $false
 
         # テンプレートを開く
         $this.bookTemplate = $this.excel.Workbooks.Open($script:FileTemplate, 0, $true)
@@ -82,8 +88,14 @@ class DocumentGenerator: System.IDisposable {
             Remove-Item -Path $script:FileDocument
         }
 
-        # 保存する
-        $this.bookDocument.SaveAs($script:FileDocument)
+        if ($this.bookDocument.WorkSheets.Count -gt 1) {
+            # 先頭シートを削除する
+            $this.bookDocument.WorkSheets.Item(1).Delete()
+
+            # 保存する
+            $this.bookDocument.SaveAs($script:FileDocument)
+        }
+
         $this.bookDocument.Close($false)
     }
 
@@ -171,7 +183,7 @@ class DocumentGenerator: System.IDisposable {
                         # 親シートはなし
                         $parSheetFmt = $null
                     }
-                    'type|class' {
+                    'type|class|enum' {
                         # テンプレートルートに追加
                         $this.format.entries += $curSheetFmt
                         # 親シートを設定
@@ -233,6 +245,13 @@ class DocumentGenerator: System.IDisposable {
                     $targetCursor = [RootTargetEnumerable]::new($parent, 'class', [Func[XPathNavigator, TargetInfo]]{
                         param([XPathNavigator] $node)
                         return [ClassTargetInfo]::new($node)
+                    })
+                }
+                'enum' {
+                    # 列挙型情報
+                    $targetCursor = [RootTargetEnumerable]::new($parent, 'enum', [Func[XPathNavigator, TargetInfo]]{
+                        param([XPathNavigator] $node)
+                        return [EnumTargetInfo]::new($node)
                     })
                 }
                 'method' {

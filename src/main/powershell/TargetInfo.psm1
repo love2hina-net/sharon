@@ -123,6 +123,120 @@ class ClassTargetInfo : TargetInfo {
 
 }
 
+class EnumTargetInfo : TargetInfo {
+
+    # 修飾子
+    [string] $modifier
+    # 名前
+    [string] $name
+    # 完全名
+    [string] $fullname
+    # インターフェース
+    [string[]] $implements
+
+    # since(Javadoc)
+    [string] $since
+    # deprecated(Javadoc)
+    [string] $deprecated
+    # serial(Javadoc)
+    [string] $serial
+    # version(Javadoc)
+    [string] $version
+    # author(Javadoc)
+    [string[]] $author
+
+    # 説明
+    [string] $description
+
+    # エントリー
+    [TargetEnumerable] $entries
+    # フィールド
+    [TargetEnumerable] $fields
+    # メソッド
+    [TargetEnumerable] $methods
+
+    EnumTargetInfo([XPathNavigator] $node) : base($node) {
+
+        $this.modifier = $node.Evaluate('@modifier')
+        $this.name = $node.Evaluate('@name')
+        $this.fullname = $node.Evaluate('@fullname')
+
+        $this.implements = [TargetInfo]::EvaluateStringArray($node, 'implements/@name')
+
+        $this.since = $node.Evaluate('javadoc/@since')
+        $this.deprecated = $node.Evaluate('javadoc/@deprecated')
+        $this.serial = $node.Evaluate('javadoc/@serial')
+        $this.version = $node.Evaluate('javadoc/@version')
+
+        $this.author = [TargetInfo]::EvaluateStringArray($node, 'javadoc/author/text()')
+
+        $this.description = $node.Evaluate('description/text()')
+
+        $this.entries = [TargetEnumerable]::new($node, 'entry', [Func[XPathNavigator, TargetInfo]]{
+            param([XPathNavigator] $_node)
+            return [EnumEntryTargetInfo]::new($_node)
+        })
+        $this.fields = [TargetEnumerable]::new($node, 'field', [Func[XPathNavigator, TargetInfo]]{
+            param([XPathNavigator] $_node)
+            return [FieldTargetInfo]::new($_node)
+        })
+        $this.methods = [TargetEnumerable]::new($node, 'method', [Func[XPathNavigator, TargetInfo]]{
+            param([XPathNavigator] $_node)
+            return [MethodTargetInfo]::new($_node)
+        })
+    }
+
+}
+
+class EnumEntryTargetInfo : TargetInfo {
+
+    # 名前
+    [string] $name
+
+    # since(Javadoc)
+    [string] $since
+    # deprecated(Javadoc)
+    [string] $deprecated
+    # serial(Javadoc)
+    [string] $serial
+
+    # 説明
+    [string] $description
+
+    # 引数
+    [TargetEnumerable] $arguments
+
+    EnumEntryTargetInfo([XPathNavigator] $node) : base($node) {
+
+        $this.name = $node.Evaluate('@name')
+
+        $this.since = $node.Evaluate('javadoc/@since')
+        $this.deprecated = $node.Evaluate('javadoc/@deprecated')
+        $this.serial = $node.Evaluate('javadoc/@serial')
+
+        $this.description = $node.Evaluate('description/text()')
+
+        $this.arguments = [TargetEnumerable]::new($node, 'argument', [Func[XPathNavigator, TargetInfo]]{
+            param([XPathNavigator] $_node)
+            return [ArgumentTargetInfo]::new($_node)
+        })
+    }
+}
+
+class ArgumentTargetInfo : TargetInfo {
+
+    # 型
+    [string] $type
+    # 値
+    [string] $value
+
+    ArgumentTargetInfo([XPathNavigator] $node) : base($node) {
+
+        $this.type = $node.Evaluate('@type')
+        $this.value = $node.Evaluate('text()')
+    }
+}
+
 class FieldTargetInfo : TargetInfo {
 
     # コメント

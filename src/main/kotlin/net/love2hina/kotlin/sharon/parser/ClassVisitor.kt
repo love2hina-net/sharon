@@ -23,27 +23,7 @@ internal fun Parser.Visitor.visitInClass(n: ClassOrInterfaceDeclaration, arg: Vo
     }
 
     // コメントの解析
-    n.comment.ifPresent {
-        if (it.isJavadocComment) {
-            val content = getCommentContents(it)
-            var index = 0
-            var name: String? = null
-
-            // Javadocをパースする
-            for (match in REGEXP_ANNOTATION.findAll(content)) {
-                index = pushJavadocComment(content, name, index, match.range, classInfo)
-                name = (match.groups as MatchNamedGroupCollection)["name"]!!.value
-            }
-            pushJavadocComment(content, name, index, IntRange(content.length, content.length), classInfo)
-        }
-        else if (it.isBlockComment) {
-            val content = getCommentContents(it)
-            classInfo.description.appendNewLine(content)
-        }
-        else {
-            classInfo.description.appendNewLine(it.content)
-        }
-    }
+    n.comment.parseJavadoc(classInfo)
 
     // 出力開始
     writer.writeStartElement("class")
@@ -90,7 +70,6 @@ internal fun Parser.Visitor.visitInClass(n: ClassOrInterfaceDeclaration, arg: Vo
 
     // アノテーション
     n.annotations.forEach { it.accept(this, arg) }
-
     // メンバー
     n.members.forEach { it.accept(this, arg) }
 

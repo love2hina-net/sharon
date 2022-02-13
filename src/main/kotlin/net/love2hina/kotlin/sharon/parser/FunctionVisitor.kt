@@ -42,28 +42,7 @@ internal fun Parser.Visitor.visitInFunction(n: MethodDeclaration, arg: Void?) {
     }
 
     // コメントの解析
-    n.comment.ifPresent {
-        if (it.isJavadocComment) {
-            // Javadocコメントから、*を取り除く
-            val content = getCommentContents(it)
-            var index = 0
-            var name: String? = null
-
-            // Javadocをパースする
-            for (match in REGEXP_ANNOTATION.findAll(content)) {
-                index = pushJavadocComment(content, name, index, match.range, methodInfo)
-                name = (match.groups as MatchNamedGroupCollection)["name"]!!.value
-            }
-            pushJavadocComment(content, name, index, IntRange(content.length, content.length), methodInfo)
-        }
-        else if (it.isBlockComment) {
-            val content = getCommentContents(it)
-            methodInfo.description.appendNewLine(content)
-        }
-        else {
-            methodInfo.description.appendNewLine(it.content)
-        }
-    }
+    n.comment.parseJavadoc(methodInfo)
 
     // 出力開始
     writer.writeStartElement("method")

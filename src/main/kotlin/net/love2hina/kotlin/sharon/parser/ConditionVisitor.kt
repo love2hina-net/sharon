@@ -93,8 +93,7 @@ internal fun Parser.Visitor.visitInSwitch(n: SwitchStmt, arg: Void?) {
 
     // 条件エントリ
     for (i in n.entries) {
-        if (!caseContinue)
-            writer.writeStartElement("case")
+        if (!caseContinue) { writer.writeStartElement("case") }
 
         // コメント
         i.comment.ifPresent { it.accept(this, arg) }
@@ -110,8 +109,7 @@ internal fun Parser.Visitor.visitInSwitch(n: SwitchStmt, arg: Void?) {
         writer.writeEndElement()
 
         caseContinue = i.statements.isEmpty()
-        if (!caseContinue)
-            writer.writeEndElement()
+        if (!caseContinue) { writer.writeEndElement() }
     }
 
     writer.writeEndElement()

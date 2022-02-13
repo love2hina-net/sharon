@@ -179,40 +179,8 @@ internal class Parser(
             // n.comment.ifPresent { it.accept(this, arg) }
         }
 
-        /**
-         * Enum定義.
-         *
-         * `enum enum_name`
-         */
-        override fun visit(n: EnumDeclaration?, arg: Void?) {
-            val name = n!!.name.asString()
-
-            writer.writeStartElement("enum")
-            writer.writeAttribute("modifier", getModifier(n.modifiers))
-            writer.writeAttribute("name", name)
-            writer.writeAttribute("fullname", packageStack.getFullName(name))
-
-            // TODO
-            // n.entries.forEach { it.accept(this, arg) }
-            // n.getImplementedTypes().forEach(p -> p.accept(this, arg));
-            // n.getMembers().forEach(p -> p.accept(this, arg));
-            // n.getAnnotations().forEach(p -> p.accept(this, arg));
-            // n.getComment().ifPresent(l -> l.accept(this, arg));
-
-            writer.writeEndElement()
-        }
-
-        /**
-         * Enum値定義.
-         */
-        override fun visit(n: EnumConstantDeclaration?, arg: Void?) {
-            // TODO
-            // n.getArguments().forEach(p -> p.accept(this, arg));
-            //        n.getClassBody().forEach(p -> p.accept(this, arg));
-            //        n.getName().accept(this, arg);
-            //        n.getAnnotations().forEach(p -> p.accept(this, arg));
-            //        n.getComment().ifPresent(l -> l.accept(this, arg));
-        }
+        override fun visit(n: EnumDeclaration?, arg: Void?) = visitInEnum(n!!, arg)
+        override fun visit(n: EnumConstantDeclaration?, arg: Void?) = visitInEnumConstant(n!!, arg)
 
         /**
          * アノテーション定義.
@@ -421,8 +389,8 @@ internal class Parser(
 
             // コメント
             n.comment.ifPresent { it.accept(this, arg) }
-            // 式
-            n.expression.accept(this, arg)
+            // TODO: 式
+            // n.expression.accept(this, arg)
         }
 
         /**
@@ -453,80 +421,18 @@ internal class Parser(
             n!!.comment.ifPresent { it.accept(this, arg) }
         }
 
-        /**
-         * nullリテラル値.
-         */
-        override fun visit(n: NullLiteralExpr?, arg: Void?) {
-            // コメント
-            n!!.comment.ifPresent { it.accept(this, arg) }
-        }
-
-        /**
-         * Booleanリテラル値.
-         */
-        override fun visit(n: BooleanLiteralExpr?, arg: Void?) {
-            // コメント
-            n!!.comment.ifPresent { it.accept(this, arg) }
-        }
-
-        /**
-         * Charリテラル値.
-         */
-        override fun visit(n: CharLiteralExpr?, arg: Void?) {
-            // コメント
-            n!!.comment.ifPresent { it.accept(this, arg) }
-        }
-
-        /**
-         * Integerリテラル値.
-         */
-        override fun visit(n: IntegerLiteralExpr?, arg: Void?) {
-            // コメント
-            n!!.comment.ifPresent { it.accept(this, arg) }
-        }
-
-        /**
-         * Longリテラル値.
-         */
-        override fun visit(n: LongLiteralExpr?, arg: Void?) {
-            // コメント
-            n!!.comment.ifPresent { it.accept(this, arg) }
-        }
-
-        /**
-         * Doubleリテラル値.
-         */
-        override fun visit(n: DoubleLiteralExpr?, arg: Void?) {
-            // コメント
-            n!!.comment.ifPresent { it.accept(this, arg) }
-        }
-
-        /**
-         * Stringリテラル値.
-         */
-        override fun visit(n: StringLiteralExpr?, arg: Void?) {
-            // コメント
-            n!!.comment.ifPresent { it.accept(this, arg) }
-        }
-
-        /**
-         * TextBlockリテラル値.
-         */
-        override fun visit(n: TextBlockLiteralExpr?, arg: Void?) {
-            // コメント
-            n!!.comment.ifPresent { it.accept(this, arg) }
-        }
+        override fun visit(n: NullLiteralExpr?, arg: Void?) = error("使われない")
+        override fun visit(n: BooleanLiteralExpr?, arg: Void?) = error("使われない")
+        override fun visit(n: CharLiteralExpr?, arg: Void?) = error("使われない")
+        override fun visit(n: IntegerLiteralExpr?, arg: Void?) = error("使われない")
+        override fun visit(n: LongLiteralExpr?, arg: Void?) = error("使われない")
+        override fun visit(n: DoubleLiteralExpr?, arg: Void?) = error("使われない")
+        override fun visit(n: StringLiteralExpr?, arg: Void?) = error("使われない")
+        override fun visit(n: TextBlockLiteralExpr?, arg: Void?) = error("使われない")
 
         override fun visit(n: IfStmt?, arg: Void?) = visitInIf(n!!, arg)
         override fun visit(n: SwitchStmt?, arg: Void?) = visitInSwitch(n!!, arg)
-
-        /**
-         * caseステートメント.
-         */
-        override fun visit(n: SwitchEntry?, arg: Void?) {
-            // 使われない
-            throw IllegalAccessException()
-        }
+        override fun visit(n: SwitchEntry?, arg: Void?) = error("使われない")
 
         override fun visit(n: ForStmt?, arg: Void?) = visitInFor(n!!, arg)
         override fun visit(n: ForEachStmt?, arg: Void?) = visitInForEach(n!!, arg)
@@ -575,8 +481,8 @@ internal class Parser(
 
             // コメント
             n.comment.ifPresent { it.accept(this, arg) }
-            // 式
-            n.expression.accept(this, arg)
+            // TODO: 式
+            // n.expression.accept(this, arg)
         }
 
         /**
@@ -587,8 +493,8 @@ internal class Parser(
 
             // コメント
             n.comment.ifPresent { it.accept(this, arg) }
-            // 式
-            n.expression.ifPresent { it.accept(this, arg) }
+            // TODO: 式
+            // n.expression.ifPresent { it.accept(this, arg) }
         }
 
         override fun visit(n: NodeList<*>?, arg: Void?) {

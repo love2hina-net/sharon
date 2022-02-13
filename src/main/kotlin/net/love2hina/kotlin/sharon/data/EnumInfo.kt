@@ -2,13 +2,10 @@ package net.love2hina.kotlin.sharon.data
 
 import net.love2hina.kotlin.sharon.setProperty
 
-internal data class ClassInfo(
+internal data class EnumInfo(
 
     /** 説明 */
     override val description: StringBuilder = StringBuilder(),
-
-    /** パラメーター型 */
-    val typeParameters: HashMap<String, TypeParameterInfo> = LinkedHashMap(),
 
     /** since */
     var since: String? = null,
@@ -33,25 +30,6 @@ internal data class ClassInfo(
 
     override fun parseTag(name: String?, value: String): Boolean
         = when (name) {
-            "param" -> {
-                val r = Regex("^<(?<type>\\w+)>(?:\\s+(?<desc>.*))?$")
-                val m = r.find(value)
-
-                if (m != null) {
-                    val groups = (m.groups as MatchNamedGroupCollection)
-
-                    val paramType = groups["type"]?.value
-                    val paramDesc = groups["desc"]?.value ?: ""
-
-                    if (paramType != null) {
-                        val typeParameterInfo = typeParameters.getOrPut(paramType) { TypeParameterInfo(paramType) }
-
-                        typeParameterInfo.description = paramDesc
-                    }
-                }
-
-                true
-            }
             "author" -> {
                 author.addAll(value.split(", "))
                 true

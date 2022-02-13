@@ -2,8 +2,6 @@ package net.love2hina.kotlin.sharon
 
 import com.github.javaparser.ast.Modifier
 import com.github.javaparser.ast.NodeList
-import com.github.javaparser.ast.comments.Comment
-import net.love2hina.kotlin.sharon.data.*
 
 import kotlin.reflect.KClass
 import kotlin.reflect.KMutableProperty
@@ -51,35 +49,3 @@ internal fun getModifier(modifiers: NodeList<Modifier>): String =
         .reduce(StringBuilder(),
             { a: StringBuilder, i: String -> a.appendSeparator(COMMA, i) },
             { a: StringBuilder, b: StringBuilder -> a.appendSeparator(COMMA, b) }).toString()
-
-internal fun getCommentContents(comment: Comment): String =
-    comment.content.split(REGEXP_NEWLINE)
-        .stream().map { l ->
-            val m = REGEXP_BLOCK_COMMENT.find(l)
-            if (m != null)
-                (m.groups as MatchNamedGroupCollection)["content"]?.value ?: ""
-            else l
-        }
-        .reduce(StringBuilder(),
-            { b, l -> b.appendNewLine(l) },
-            { b1, b2 -> b1.appendNewLine(b2) })
-        .toString()
-
-internal fun pushJavadocComment(content: String, name: String?, start: Int, range: IntRange, info: JavadocInfo ): Int {
-
-    if (start < range.start) {
-        val value = content.substring(start, range.start).trim()
-
-        when {
-            info.parseTag(name, value) -> {}
-            name == null -> {
-                info.description.appendNewLine(value)
-            }
-            else -> {
-                info.description.appendNewLine("@$name $value")
-            }
-        }
-    }
-
-    return range.endInclusive + 1
-}

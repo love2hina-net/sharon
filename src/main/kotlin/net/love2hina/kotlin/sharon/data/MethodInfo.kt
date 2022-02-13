@@ -20,20 +20,16 @@ internal data class MethodInfo(
     val throws: HashMap<String, ThrowsInfo> = LinkedHashMap(),
 
     /*
-    * see
-@since
-@deprecated
-@serialData
-{@link}
-{@linkplain}
-{@inheritDoc}
-{@docRoot}
-    * */
+     * see
+     * @since
+     * @deprecated
+     * @serialData
+     */
 
 ): JavadocInfo {
 
-    override fun parseTag(name: String?, value: String): Boolean {
-        return when (name) {
+    override fun parseTag(name: String?, value: String): Boolean
+        = when (name) {
             "param" -> {
                 val r = Regex("^(?:(?<name>\\w+)|<(?<type>\\w+)>)(?:\\s+(?<desc>.*))?$")
                 val m = r.find(value)
@@ -86,6 +82,5 @@ internal data class MethodInfo(
             }
             else -> false
         }
-    }
 
 }

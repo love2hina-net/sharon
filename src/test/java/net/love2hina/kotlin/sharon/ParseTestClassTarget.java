@@ -12,10 +12,10 @@ import java.nio.file.Path;
  * </p>
  *
  * @author webmaster@love2hina.net
- * @since 2022/02/09
- * @version 1.0.0
+ * @since 0.1.0
+ * @version 0.2.0
  */
-public class ParseTestTarget extends Object implements java.io.Serializable {
+public class ParseTestClassTarget extends Object implements java.io.Serializable {
 
     /** フィールド */
     private int fieldInt = 0, fieldInt2 = 2;
@@ -39,7 +39,7 @@ public class ParseTestTarget extends Object implements java.io.Serializable {
      * @throws Exception 例外
      */
     @MyAnnotation
-    public <Ty> int method(ParseTestTarget this, final String name, Ty amount) throws Exception {
+    public <Ty> int method(ParseTestClassTarget this, final String name, Ty amount) throws Exception {
         /// # 出力
         System.out.println("Hello, world!");
 
