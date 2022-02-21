@@ -342,17 +342,21 @@ class AssignmentControl : ControlStatement {
     [void] Output([DocumentWriter] $docWriter, $target) {
         $this._BeginTransaction($docWriter, $target)
 
-        $this._AppendHeader($docWriter, $target)
-
         [int] $index = 0
 
         # 条件を繰り返す
         foreach ($i in $target) {
+            if ($index -eq 0) {
+                $this._AppendHeader($docWriter, $target)
+            }
+
             $i.index = ++$index
             $this._AppendBody($docWriter, $i)
         }
 
-        $this._AppendFooter($docWriter, $target)
+        if ($index -gt 0) {
+            $this._AppendFooter($docWriter, $target)
+        }
 
         $this._CommitTransaction($docWriter)
     }
@@ -369,14 +373,20 @@ class ConditionControl : ControlStatement {
     [void] Output([DocumentWriter] $docWriter, $target) {
         $this._BeginTransaction($docWriter, $target)
 
-        $this._AppendHeader($docWriter, $target)
+        [int] $index = 0
 
         # 条件を繰り返す
         foreach ($i in $target) {
+            if ($index -eq 0) {
+                $this._AppendHeader($docWriter, $target)
+            }
+            ++$index
             $this._AppendBody($docWriter, $i)
         }
 
-        $this._AppendFooter($docWriter, $target)
+        if ($index -gt 0) {
+            $this._AppendFooter($docWriter, $target)
+        }
 
         $this._CommitTransaction($docWriter)
     }
@@ -398,16 +408,23 @@ class IterationControl : ControlStatement {
     [void] Output([DocumentWriter] $docWriter, $target) {
         $this._BeginTransaction($docWriter, $target)
 
-        $this._AppendHeader($docWriter, $target)
+        [int] $index = 0
 
         # 列挙対象の取得
         $collections = (Invoke-Expression ('$target.' + "$($this.target)"))
         foreach ($i in $collections) {
+            if ($index -eq 0) {
+                $this._AppendHeader($docWriter, $target)
+            }
+            ++$index
+
             # 繰り返し出力する
             $this._AppendBody($docWriter, $i)
         }
 
-        $this._AppendFooter($docWriter, $target)
+        if ($index -gt 0) {
+            $this._AppendFooter($docWriter, $target)
+        }
 
         $this._CommitTransaction($docWriter)
     }
