@@ -333,39 +333,10 @@ internal class Parser(
             }
         }
 
-        /**
-         * コンストラクタ定義.
-         */
-        override fun visit(n: ConstructorDeclaration?, arg: Void?) {
-            // TODO
-            //  n.getBody().accept(this, arg);
-            //        n.getModifiers().forEach(p -> p.accept(this, arg));
-            //        n.getName().accept(this, arg);
-            //        n.getParameters().forEach(p -> p.accept(this, arg));
-            //        n.getReceiverParameter().ifPresent(l -> l.accept(this, arg));
-            //        n.getThrownExceptions().forEach(p -> p.accept(this, arg));
-            //        n.getTypeParameters().forEach(p -> p.accept(this, arg));
-            //        n.getAnnotations().forEach(p -> p.accept(this, arg));
-            //        n.getComment().ifPresent(l -> l.accept(this, arg));
-        }
-
+        override fun visit(n: ConstructorDeclaration?, arg: Void?) = visitInConstructor(n!!, arg)
         override fun visit(n: MethodDeclaration?, arg: Void?) = visitInFunction(n!!, arg)
-
-        /**
-         * 明示的なthisパラメータ.
-         */
-        override fun visit(n: ReceiverParameter?, arg: Void?) {
-            // 使われない
-            throw IllegalAccessException()
-        }
-
-        /**
-         * パラメータ.
-         */
-        override fun visit(n: Parameter?, arg: Void?) {
-            // 使われない
-            throw IllegalAccessException()
-        }
+        override fun visit(n: ReceiverParameter?, arg: Void?) = error("使われない")
+        override fun visit(n: Parameter?, arg: Void?) = error("使われない")
 
         /**
          * ブロックステートメント.

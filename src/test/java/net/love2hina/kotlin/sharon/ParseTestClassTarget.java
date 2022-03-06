@@ -1,5 +1,6 @@
 package net.love2hina.kotlin.sharon;
 
+import java.io.IOException;
 import java.nio.file.Path;
 
 /**
@@ -26,6 +27,18 @@ public class ParseTestClassTarget extends Object implements java.io.Serializable
 
     protected @interface MyAnnotation {
 
+    }
+
+    /**
+     * コンストラクタ.
+     *
+     * @param parent 親
+     * @exception IOException IO例外
+     */
+    public ParseTestClassTarget(final String parent) throws IOException
+    {
+        /// # 初期化
+        /// 初期化処理を行う
     }
 
     /**
