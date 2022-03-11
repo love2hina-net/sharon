@@ -19,5 +19,7 @@ ConvertFrom-StringData -StringData @'
     E005001 = The specified a template file was not found.
     E005002 = The specified output path is not a directory.
     E005003 = The specified path is not a file or directory.
+    E006001 = Invalid destination. This client has already terminated or is in processing.
+    E007001 = Invalid status, because not initialized. This client is not loaded the template file.
 '@
 }

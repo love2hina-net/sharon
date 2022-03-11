@@ -525,7 +525,7 @@ class RootTargetEnumerable : TargetEnumerable {
         if ($null -ne $xpath) { return $xpath }
         elseif ($null -ne $info) { return $info.node }
         else {
-            throw (New-Object -TypeName 'System.ArgumentException' -ArgumentList ($global:messages.E004001))
+            throw (New-Object -TypeName 'System.ArgumentException' -ArgumentList @($global:messages.E004001))
         }
     }
 
@@ -536,7 +536,7 @@ class RootTargetEnumerable : TargetEnumerable {
         if ($null -ne $xpath) { return "//$query" }
         elseif ($null -ne $info) { return $query }
         else {
-            throw (New-Object -TypeName 'System.ArgumentException' -ArgumentList ($global:messages.E004001))
+            throw (New-Object -TypeName 'System.ArgumentException' -ArgumentList @($global:messages.E004001))
         }
     }
 

@@ -21,10 +21,6 @@ class DocumentWriter {
     # 生成ドキュメント側で出力した行位置
     [long] $lineDocument = 0
 
-    # ミューテックス
-    [System.Threading.Mutex] $mutex =
-        (New-Object -TypeName 'System.Threading.Mutex' -ArgumentList ($false, 'Global\sharon.doc.mutex'))
-
     # トランザクションスタック
     [Stack[TransactionRange]] $stackTransaction =
         (New-Object -TypeName 'System.Collections.Generic.Stack[TransactionRange]')
@@ -99,20 +95,20 @@ class DocumentWriter {
 
         # 開始チェック
         if ($lineLength -lt 1) {
-            throw (New-Object -TypeName 'System.ArgumentException' -ArgumentList ("$($global:messages.E003001) lineLength:$lineLength"))
+            throw (New-Object -TypeName 'System.ArgumentException' -ArgumentList @("$($global:messages.E003001) lineLength:$lineLength"))
         }
         if ($lineStart -lt $this.lineTemplate) {
             throw (New-Object -TypeName 'System.ArgumentException' `
-                -ArgumentList ("$($global:messages.E003002) specified line:$lineStart, decitioned line:$($this.lineTemplate)"))
+                -ArgumentList @("$($global:messages.E003002) specified line:$lineStart, decitioned line:$($this.lineTemplate)"))
         }
         if ($this.stackTransaction.TryPeek([ref]$range)) {
             if ($lineStart -lt $range.row) {
                 throw (New-Object -TypeName 'System.ArgumentException' `
-                    -ArgumentList ("$($global:messages.E003003) specified begin:$lineStart, transaction begin:$($range.row)"))
+                    -ArgumentList @("$($global:messages.E003003) specified begin:$lineStart, transaction begin:$($range.row)"))
             }
             if (($lineStart + $lineLength) -gt ($range.row + $range.length)) {
                 throw (New-Object -TypeName 'System.ArgumentException' `
-                    -ArgumentList ("$($global:messages.E003003) specified end:$($lineStart + $lineLength - 1), transaction end:$($range.row + $range.length - 1)"))
+                    -ArgumentList @("$($global:messages.E003003) specified end:$($lineStart + $lineLength - 1), transaction end:$($range.row + $range.length - 1)"))
             }
         }
         else {
@@ -148,7 +144,7 @@ class DocumentWriter {
         $offset = $lineStart - $this.lineTemplate - 1
         if ($offset -lt 0) {
             throw (New-Object -TypeName 'System.ArgumentException' `
-                -ArgumentList ("$($global:messages.E003004) specified line:$lineStart, decitioned line:$($this.lineTemplate)"))
+                -ArgumentList @("$($global:messages.E003004) specified line:$lineStart, decitioned line:$($this.lineTemplate)"))
         }
 
         return $this.lineDocument + $offset + 1
@@ -187,21 +183,16 @@ class DocumentWriter {
 
         if ($lineLength -le 0) {
             throw (New-Object -TypeName 'System.ArgumentException' `
-                -ArgumentList ("$($global:messages.E003005) lineLength:$lineLength"))
+                -ArgumentList @("$($global:messages.E003005) lineLength:$lineLength"))
         }
 
         [long] $lineDocumentStart = $this.GetTemplateRowOnDocument($lineStart)
 
-        # クリップボードのコンフリクト防止
-        $this.mutex.WaitOne()
-        try {
-            # 挿入
-            [void] $this.sheetDocument.Rows("$($lineDocumentStart):$($lineDocumentStart + $lineLength - 1)").Copy()
-            [void] $this.sheetDocument.Rows("$($this.lineDocument + 1)").Insert($global:const.xlShiftDown)
-        }
-        finally {
-            $this.mutex.ReleaseMutex()
-        }
+        # 挿入
+        [string] $insertAddress = "$($this.lineDocument + 1):$($this.lineDocument + $lineLength)"
+        [void] $this.sheetDocument.Rows($insertAddress).Insert($global:const.xlShiftDown)
+        [void] $this.sheetDocument.Rows($insertAddress).ClearFormats()
+        [void] $this.sheetDocument.Rows("$($lineDocumentStart + $lineLength):$($lineDocumentStart + ($lineLength * 2) - 1)").Copy($this.sheetDocument.Rows($insertAddress))
 
         # シフト処理
         if ($shiftStep -gt 0) {
@@ -246,7 +237,7 @@ class DocumentWriter {
 
         if ($lineLength -le 0) {
             throw (New-Object -TypeName 'System.ArgumentException' `
-                -ArgumentList ("$($global:messages.E003005) lineLength:$lineLength"))
+                -ArgumentList @("$($global:messages.E003005) lineLength:$lineLength"))
         }
 
         $rangeLine = $this.sheetDocument.Range(
