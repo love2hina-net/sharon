@@ -6,13 +6,13 @@ import java.io.Writer
 
 buildscript {
     val versions by extra { mapOf<String, Any>(
-        "kotlin" to "1.6.0",
+        "kotlin" to "1.6.20",
         "java" to JavaVersion.VERSION_11,
         "target_jvm" to "11",
         "junit" to "5.8.2",
-        "mockito" to "4.1.0",
-        "doma" to "2.50.0",
-        "h2" to "2.0.204"
+        "mockito" to "4.3.1",
+        "doma" to "2.51.0",
+        "h2" to "2.1.210"
     )}
     repositories {
         mavenCentral()
@@ -45,20 +45,21 @@ repositories {
 
 dependencies {
     // Kotlin
-    implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8:${versions["kotlin"]}")
-    implementation("org.jetbrains.kotlin:kotlin-reflect:${versions["kotlin"]}")
+    implementation(kotlin("stdlib-jdk8:${versions["kotlin"]}"))
+    implementation(kotlin("reflect:${versions["kotlin"]}"))
+    implementation(kotlin("compiler:${versions["kotlin"]}"))
 
     // Json Serialization
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.3.2")
 
     // Java Parser
-    implementation("com.github.javaparser:javaparser-core:3.23.1")
+    implementation("com.github.javaparser:javaparser-core:3.24.2")
 
     // H2 Database engine
     runtimeOnly("com.h2database:h2:${versions["h2"]}")
 
     // logback
-    runtimeOnly("ch.qos.logback:logback-classic:1.2.10")
+    runtimeOnly("ch.qos.logback:logback-classic:1.2.11")
 
     // Doma2
     kapt("org.seasar.doma:doma-processor:${versions["doma"]}")

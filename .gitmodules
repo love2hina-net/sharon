@@ -1,0 +1,3 @@
+[submodule "reference/kotlin-toy-compiler"]
+	path = reference/kotlin-toy-compiler
+	url = https://github.com/youta1119/kotlin-toy-compiler.git
