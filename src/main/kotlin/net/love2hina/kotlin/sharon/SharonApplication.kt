@@ -1,7 +1,7 @@
 package net.love2hina.kotlin.sharon
 
 import net.love2hina.kotlin.sharon.entity.FileMap
-import net.love2hina.kotlin.sharon.parser.Parser
+import net.love2hina.kotlin.sharon.parser.java.Parser
 import org.seasar.doma.jdbc.UniqueConstraintException
 
 import java.io.*
@@ -152,9 +152,7 @@ class SharonApplication(val args: Array<String>): FileMapper, AutoCloseable {
 
     fun processFiles() {
         dbManager.execute { dao ->
-            dao.selectAll().use { stream ->
-                stream.parallel().forEach { Parser.parse(this, it) }
-            }
+            dao.selectAll().use { Parser.parse(this, it) }
         }
     }
 

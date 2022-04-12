@@ -1,4 +1,4 @@
-package net.love2hina.kotlin.sharon.parser
+package net.love2hina.kotlin.sharon.parser.java
 
 import com.github.javaparser.ast.body.EnumConstantDeclaration
 import com.github.javaparser.ast.body.EnumDeclaration

@@ -1,4 +1,4 @@
-package net.love2hina.kotlin.sharon.parser
+package net.love2hina.kotlin.sharon.parser.java
 
 import net.love2hina.kotlin.sharon.TestUtils.pathProjectRoot
 import org.junit.jupiter.api.Test

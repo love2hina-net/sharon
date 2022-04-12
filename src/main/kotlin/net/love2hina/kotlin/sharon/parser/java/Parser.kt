@@ -1,4 +1,4 @@
-package net.love2hina.kotlin.sharon.parser
+package net.love2hina.kotlin.sharon.parser.java
 
 import com.github.javaparser.Position
 import com.github.javaparser.Range
@@ -14,10 +14,12 @@ import com.github.javaparser.ast.visitor.VoidVisitor
 import net.love2hina.kotlin.sharon.*
 import net.love2hina.kotlin.sharon.data.*
 import net.love2hina.kotlin.sharon.entity.FileMap
+import net.love2hina.kotlin.sharon.parser.ParserInterface
 
 import java.io.File
 import java.lang.Integer.compare
 import java.nio.charset.StandardCharsets.UTF_8
+import java.util.stream.Stream
 
 internal class Parser(
     val fileSrc: File,
@@ -25,9 +27,11 @@ internal class Parser(
     val entity: FileMap?
 ) {
 
-    companion object Default {
-        fun parse(mapper: FileMapper, entity: FileMap) {
-            Parser(File(entity.srcFile), mapper, entity).parse(File(entity.xmlFile))
+    companion object Default: ParserInterface {
+        override fun parse(mapper: FileMapper, entities: Stream<FileMap>) {
+            entities.parallel().forEach {
+                Parser(File(it.srcFile), mapper, it).parse(File(it.xmlFile))
+            }
         }
 
         fun parse(file: File, xml: File) {

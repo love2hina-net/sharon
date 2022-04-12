@@ -1,4 +1,4 @@
-package net.love2hina.kotlin.sharon.parser
+package net.love2hina.kotlin.sharon.parser.java
 
 import com.github.javaparser.ast.stmt.IfStmt
 import com.github.javaparser.ast.stmt.Statement
