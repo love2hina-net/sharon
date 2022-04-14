@@ -1,4 +1,4 @@
-package net.love2hina.kotlin.sharon;
+package net.love2hina.kotlin.sharon.java;
 
 import java.io.IOException;
 

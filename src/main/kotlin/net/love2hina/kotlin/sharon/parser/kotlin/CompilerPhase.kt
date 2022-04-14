@@ -2,12 +2,9 @@ package net.love2hina.kotlin.sharon.parser.kotlin
 
 import org.jetbrains.kotlin.backend.common.phaser.*
 import org.jetbrains.kotlin.cli.common.messages.AnalyzerWithCompilerReport
-import org.jetbrains.kotlin.cli.common.toLogger
 import org.jetbrains.kotlin.cli.jvm.compiler.*
-import org.jetbrains.kotlin.config.CompilerConfiguration
 import org.jetbrains.kotlin.config.JVMConfigurationKeys
 import org.jetbrains.kotlin.config.languageVersionSettings
-import org.jetbrains.kotlin.ir.backend.jvm.jvmResolveLibraries
 
 internal fun createUnitPhase(
     name: String,
@@ -18,11 +15,7 @@ internal fun createUnitPhase(
 
 internal val analyzePhase = createUnitPhase(
     op = {
-        val sourceFiles = environment.getSourceFiles()
-
-        val resolvedKlibs = environment.configuration.get(JVMConfigurationKeys.KLIB_PATHS)?.let { klibPaths ->
-            jvmResolveLibraries(klibPaths, messageCollector.toLogger())
-        }?.getFullList() ?: emptyList()
+        val sourceFiles = configuration.getNotNull(SharonConfigurationKey.SOURCE_FILES)
 
         val analyzerWithCompilerReport = AnalyzerWithCompilerReport(
             messageCollector, environment.configuration.languageVersionSettings)
@@ -46,7 +39,7 @@ internal val analyzePhase = createUnitPhase(
                 environment.configuration,
                 environment::createPackagePartProvider,
                 sourceModuleSearchScope = scope,
-                klibList = resolvedKlibs
+                klibList = emptyList()
             )
         }
 
@@ -64,8 +57,3 @@ val toplevelPhase: NamedCompilerPhase<SharonBackendContext, Unit> = namedUnitPha
     prerequisite = emptySet(),
     nlevels = 1,
     lower = analyzePhase)
-
-fun compileToEmpty(environment: KotlinCoreEnvironment, configuration: CompilerConfiguration) {
-    val context = SharonBackendContext(environment, configuration)
-    toplevelPhase.invokeToplevel(context.phaseConfig, context, Unit)
-}
