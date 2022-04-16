@@ -16,6 +16,7 @@ import org.jetbrains.kotlin.ir.declarations.IrFactory
 import org.jetbrains.kotlin.ir.declarations.IrFile
 import org.jetbrains.kotlin.ir.types.IrTypeSystemContext
 import org.jetbrains.kotlin.name.FqName
+import org.jetbrains.kotlin.resolve.BindingContext
 
 class SharonBackendContext(
     val environment: KotlinCoreEnvironment,
@@ -23,6 +24,7 @@ class SharonBackendContext(
 ): CommonBackendContext {
 
     lateinit var moduleDescriptor: ModuleDescriptor
+    lateinit var bindingContext: BindingContext
     val phaseConfig = configuration.get(CLIConfigurationKeys.PHASE_CONFIG)!!
 
     override val builtIns: SharonBuiltIns by lazy {

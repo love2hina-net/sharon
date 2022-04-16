@@ -6,73 +6,125 @@ import com.intellij.openapi.vfs.StandardFileSystems
 import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.psi.PsiManager
 import net.love2hina.kotlin.sharon.FileMapper
+import net.love2hina.kotlin.sharon.SmartXMLStreamWriter
 import net.love2hina.kotlin.sharon.entity.FileMap
 import net.love2hina.kotlin.sharon.parser.ParserInterface
-import org.jetbrains.kotlin.backend.common.phaser.invokeToplevel
 import org.jetbrains.kotlin.cli.common.CLIConfigurationKeys
-import org.jetbrains.kotlin.cli.common.createPhaseConfig
 import org.jetbrains.kotlin.cli.common.messages.*
 import org.jetbrains.kotlin.cli.jvm.compiler.EnvironmentConfigFiles
 import org.jetbrains.kotlin.cli.jvm.compiler.KotlinCoreEnvironment
-import org.jetbrains.kotlin.config.CommonConfigurationKeys
 import org.jetbrains.kotlin.config.CompilerConfiguration
 import org.jetbrains.kotlin.extensions.PreprocessedFileCreator
 import org.jetbrains.kotlin.psi.KtFile
+import org.jetbrains.kotlin.psi.KtVisitorVoid
 import java.io.File
+import java.nio.charset.StandardCharsets
 import java.util.function.Predicate
-import java.util.stream.Collectors
 import java.util.stream.Stream
 
-internal object Parser: ParserInterface {
+internal class Parser(
+    val fileSrc: KtFile,
+    val mapper: FileMapper?,
+    val entity: FileMap?
+) {
 
-    override fun parse(mapper: FileMapper, entities: Stream<FileMap>) {
-        parse(entities.map { it.srcFile })
-    }
+    internal data class ParseFile(
+        val fileSrc: File,
+        val fileXml: File,
+        val entity: FileMap?
+    )
 
-    fun parse(file: File) {
-        parse(Stream.of(file.absolutePath))
-    }
+    internal data class ParseKtFile(
+        val fileSrc: KtFile,
+        val fileXml: File,
+        val entity: FileMap?
+    )
 
-    private fun parse(files: Stream<String>) {
-        val arguments = SharonCompilerArguments()
-        var messageCollector: MessageCollector = PrintingMessageCollector(System.err, MessageRenderer.PLAIN_RELATIVE_PATHS, arguments.verbose)
-        val rootDisposable: Disposable = Disposer.newDisposable()
-        val configuration = CompilerConfiguration()
-
-        // メッセージコレクター
-        val fixedMessageCollector = if (arguments.suppressWarnings && !arguments.allWarningsAsErrors) {
-            FilteringMessageCollector(messageCollector, Predicate.isEqual(CompilerMessageSeverity.WARNING))
-        } else {
-            messageCollector
-        }
-        configuration.put(CLIConfigurationKeys.ORIGINAL_MESSAGE_COLLECTOR_KEY, fixedMessageCollector)
-        GroupingMessageCollector(fixedMessageCollector, arguments.allWarningsAsErrors).also {
-            messageCollector = it
-            configuration.put(CLIConfigurationKeys.MESSAGE_COLLECTOR_KEY, messageCollector)
+    companion object Default: ParserInterface {
+        override fun parse(mapper: FileMapper, entities: Stream<FileMap>) {
+            parse(entities.map { ParseFile(File(it.srcFile), File(it.xmlFile), it) }, mapper)
         }
 
-        configuration.put(CLIConfigurationKeys.PHASE_CONFIG, createPhaseConfig(toplevelPhase, arguments, messageCollector))
+        fun parse(file: File, xml: File) {
+            parse(Stream.of(ParseFile(file, xml, null)), null)
+        }
 
-        // モジュール名は固定
-        configuration.put(CommonConfigurationKeys.MODULE_NAME, "main")
+        private fun parse(files: Stream<ParseFile>, mapper: FileMapper?) {
+            val arguments = SharonCompilerArguments()
+            var messageCollector: MessageCollector = PrintingMessageCollector(System.err, MessageRenderer.PLAIN_RELATIVE_PATHS, arguments.verbose)
+            val rootDisposable: Disposable = Disposer.newDisposable()
+            val configuration = CompilerConfiguration()
 
-        val environment = KotlinCoreEnvironment.createForProduction(rootDisposable, configuration, EnvironmentConfigFiles.NATIVE_CONFIG_FILES)
+            // メッセージコレクター
+            val fixedMessageCollector = if (arguments.suppressWarnings && !arguments.allWarningsAsErrors) {
+                FilteringMessageCollector(messageCollector, Predicate.isEqual(CompilerMessageSeverity.WARNING))
+            } else {
+                messageCollector
+            }
+            configuration.put(CLIConfigurationKeys.ORIGINAL_MESSAGE_COLLECTOR_KEY, fixedMessageCollector)
+            GroupingMessageCollector(fixedMessageCollector, arguments.allWarningsAsErrors).also {
+                messageCollector = it
+                configuration.put(CLIConfigurationKeys.MESSAGE_COLLECTOR_KEY, messageCollector)
+            }
 
-        // ファイル
-        val localFileSystem = VirtualFileManager.getInstance().getFileSystem(StandardFileSystems.FILE_PROTOCOL)
-        val virtualFileCreator = PreprocessedFileCreator(environment.project)
-        val psiManager = PsiManager.getInstance(environment.project)
-        val ktFiles: List<KtFile> = files.map { file ->
-                val virtualFile = localFileSystem.findFileByPath(file)?.let(virtualFileCreator::create)
-                virtualFile?.let { psiManager.findFile(it) }
-            }.filter { it is KtFile }
-            .map { it as KtFile }
-            .collect(Collectors.toList())
-        configuration.put(SharonConfigurationKey.SOURCE_FILES, ktFiles)
+            // プロジェクトの作成
+            val environment = KotlinCoreEnvironment.createForProduction(rootDisposable, configuration, EnvironmentConfigFiles.NATIVE_CONFIG_FILES)
 
-        val context = SharonBackendContext(environment, configuration)
+            // ファイル
+            val localFileSystem = VirtualFileManager.getInstance().getFileSystem(StandardFileSystems.FILE_PROTOCOL)
+            val virtualFileCreator = PreprocessedFileCreator(environment.project)
+            val psiManager = PsiManager.getInstance(environment.project)
 
-        toplevelPhase.invokeToplevel(context.phaseConfig, context, Unit)
+            val ktFiles: Stream<ParseKtFile> = files.map { file ->
+                val virtualFile = localFileSystem.findFileByPath(file.fileSrc.absolutePath)?.let(virtualFileCreator::create)
+                ParseKtFile(psiManager.findFile(virtualFile!!) as KtFile, file.fileXml, file.entity)
+            }
+
+            ktFiles.forEach { Parser(it.fileSrc, mapper, it.entity).parse(it.fileXml) }
+        }
+
+    }
+
+    fun parse(fileXml: File) {
+        // XML
+        val xmlWriter = SmartXMLStreamWriter(fileXml)
+
+        xmlWriter.use {
+            it.writeStartDocument(StandardCharsets.UTF_8.name(), "1.0")
+
+            fileSrc.accept(Visitor(it))
+
+            it.writeEndDocument()
+            it.flush()
+        }
+    }
+
+    internal inner class Visitor(
+        internal val writer: SmartXMLStreamWriter
+    ): KtVisitorVoid() {
+
+        /**
+         * コンパイル単位.
+         */
+        override fun visitKtFile(file: KtFile) {
+
+            writer.writeStartElement("file")
+            writer.writeAttribute("language", "kotlin")
+            writer.writeAttribute("src", file.virtualFile.path)
+
+            // モジュール
+
+            // パッケージ宣言
+            file.packageDirective?.let {
+
+            }
+            // インポート
+            file.importDirectives.forEach { it.accept(this) }
+
+
+            writer.writeEndElement()
+        }
+
     }
 
 }

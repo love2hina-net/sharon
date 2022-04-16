@@ -46,13 +46,12 @@ internal class Parser(
         val xmlWriter = SmartXMLStreamWriter(fileXml)
 
         xmlWriter.use {
-            xmlWriter.writeStartDocument(UTF_8.name(), "1.0")
+            it.writeStartDocument(UTF_8.name(), "1.0")
 
-            unit.accept(Visitor(xmlWriter), null)
+            unit.accept(Visitor(it), null)
 
-            xmlWriter.writeEndDocument()
-            xmlWriter.flush()
-            xmlWriter.close()
+            it.writeEndDocument()
+            it.flush()
         }
     }
 
