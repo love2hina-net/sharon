@@ -120,7 +120,8 @@ internal class Parser(
             }
             // インポート
             file.importDirectives.forEach { it.accept(this) }
-
+            // 型宣言
+            file.acceptChildren(this)
 
             writer.writeEndElement()
         }
