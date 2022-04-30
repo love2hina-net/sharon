@@ -2,6 +2,7 @@ package net.love2hina.kotlin.sharon.data
 
 import com.github.javaparser.ast.comments.Comment
 import net.love2hina.kotlin.sharon.appendNewLine
+import org.jetbrains.kotlin.kdoc.psi.api.KDoc
 import java.util.Optional
 
 internal interface JavadocInfo {
@@ -33,6 +34,12 @@ internal fun Optional<Comment>.parseJavadoc(info: JavadocInfo) {
         else {
             info.description.appendNewLine(it.content)
         }
+    }
+}
+
+internal fun KDoc?.parseKdoc(info: JavadocInfo) {
+    this?.let {
+        // TODO: KDocの解析
     }
 }
 

@@ -7,6 +7,7 @@ import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.psi.PsiManager
 import net.love2hina.kotlin.sharon.FileMapper
 import net.love2hina.kotlin.sharon.SmartXMLStreamWriter
+import net.love2hina.kotlin.sharon.data.PackageStack
 import net.love2hina.kotlin.sharon.entity.FileMap
 import net.love2hina.kotlin.sharon.parser.ParserInterface
 import org.jetbrains.kotlin.cli.common.CLIConfigurationKeys
@@ -15,8 +16,7 @@ import org.jetbrains.kotlin.cli.jvm.compiler.EnvironmentConfigFiles
 import org.jetbrains.kotlin.cli.jvm.compiler.KotlinCoreEnvironment
 import org.jetbrains.kotlin.config.CompilerConfiguration
 import org.jetbrains.kotlin.extensions.PreprocessedFileCreator
-import org.jetbrains.kotlin.psi.KtFile
-import org.jetbrains.kotlin.psi.KtVisitorVoid
+import org.jetbrains.kotlin.psi.*
 import java.io.File
 import java.nio.charset.StandardCharsets
 import java.util.function.Predicate
@@ -103,6 +103,8 @@ internal class Parser(
         internal val writer: SmartXMLStreamWriter
     ): KtVisitorVoid() {
 
+        internal val packageStack = PackageStack()
+
         /**
          * コンパイル単位.
          */
@@ -112,19 +114,48 @@ internal class Parser(
             writer.writeAttribute("language", "kotlin")
             writer.writeAttribute("src", file.virtualFile.path)
 
-            // モジュール
-
             // パッケージ宣言
             file.packageDirective?.let {
-
+                // パッケージを設定
+                this@Parser.entity?.let { entity -> mapper?.applyPackage(entity, it.fqName.asString()) }
             }
-            // インポート
-            file.importDirectives.forEach { it.accept(this) }
-            // 型宣言
+            // インポート／型宣言
             file.acceptChildren(this)
 
             writer.writeEndElement()
         }
+
+        /**
+         * パッケージ定義.
+         *
+         * `package package_name`
+         */
+        override fun visitPackageDirective(directive: KtPackageDirective) {
+            val name = directive.fqName.asString()
+
+            packageStack.push(name)
+
+            writer.writeEmptyElement("package")
+            writer.writeAttribute("package", name)
+        }
+
+        override fun visitImportList(importList: KtImportList) {
+            importList.acceptChildren(this)
+        }
+
+        /**
+         * インポート.
+         *
+         * `import package_name`
+         */
+        override fun visitImportDirective(importDirective: KtImportDirective) {
+            importDirective.importedFqName?.let { name ->
+                writer.writeEmptyElement("import")
+                writer.writeAttribute("package", name.asString())
+            }
+        }
+
+        override fun visitClass(klass: KtClass) = visitInClass(klass)
 
     }
 

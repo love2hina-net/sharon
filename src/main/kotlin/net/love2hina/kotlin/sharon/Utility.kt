@@ -2,6 +2,9 @@ package net.love2hina.kotlin.sharon
 
 import com.github.javaparser.ast.Modifier
 import com.github.javaparser.ast.NodeList
+import com.intellij.psi.PsiElement
+import org.jetbrains.kotlin.psi.KtModifierList
+import java.util.stream.Stream
 
 import kotlin.reflect.KClass
 import kotlin.reflect.KMutableProperty
@@ -49,3 +52,23 @@ internal fun getModifier(modifiers: NodeList<Modifier>): String =
         .reduce(StringBuilder(),
             { a: StringBuilder, i: String -> a.appendSeparator(COMMA, i) },
             { a: StringBuilder, b: StringBuilder -> a.appendSeparator(COMMA, b) }).toString()
+
+internal fun getModifier(modifiers: KtModifierList?): String  =
+    (modifiers?.childStream() ?: Stream.of())
+        .map { it.text }
+        .reduce(StringBuilder(),
+            { a: StringBuilder, i: String -> a.appendSeparator(COMMA, i) },
+            { a: StringBuilder, b: StringBuilder -> a.appendSeparator(COMMA, b) }).toString()
+
+internal fun PsiElement.childStream(): Stream<PsiElement> {
+    // TODO: 先に列挙してしまっている
+    val list = mutableListOf<PsiElement>()
+
+    var node = this.firstChild
+    while (node != null) {
+        list.add(node)
+        node = node.nextSibling
+    }
+
+    return list.stream()
+}

@@ -15,7 +15,7 @@ import java.nio.file.Path
  * @since 0.1.0
  * @version 0.2.0
  */
-class ParseTestClassTarget
+public class ParseTestClassTarget
     /**
      * コンストラクタ.
      *
