@@ -21,6 +21,9 @@ import java.lang.Integer.compare
 import java.nio.charset.StandardCharsets.UTF_8
 import java.util.stream.Stream
 
+internal val REGEXP_BLOCK_COMMENT = Regex("^\\s*[/*]*\\s*(?<content>\\S|\\S.*\\S)?\\s*$")
+internal val REGEXP_LINE_COMMENT = Regex("^/\\s*(?<content>\\S|\\S.*\\S)\\s*$")
+
 internal class Parser(
     val fileSrc: File,
     val mapper: FileMapper?,

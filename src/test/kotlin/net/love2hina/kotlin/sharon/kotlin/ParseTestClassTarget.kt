@@ -32,6 +32,10 @@ public class ParseTestClassTarget
         fieldInt = 2
     }
 
+    init {
+        /// # 初期化その2
+    }
+
     fun <Ty> method(name: String, amount: Ty): Int {
         /// # 出力
         println("Hello, world.")

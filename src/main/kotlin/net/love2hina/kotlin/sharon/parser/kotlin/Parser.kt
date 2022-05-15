@@ -4,10 +4,12 @@ import com.intellij.openapi.Disposable
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.vfs.StandardFileSystems
 import com.intellij.openapi.vfs.VirtualFileManager
+import com.intellij.psi.PsiComment
 import com.intellij.psi.PsiManager
 import net.love2hina.kotlin.sharon.FileMapper
 import net.love2hina.kotlin.sharon.SmartXMLStreamWriter
 import net.love2hina.kotlin.sharon.data.PackageStack
+import net.love2hina.kotlin.sharon.data.REGEXP_ASSIGNMENT
 import net.love2hina.kotlin.sharon.entity.FileMap
 import net.love2hina.kotlin.sharon.parser.ParserInterface
 import org.jetbrains.kotlin.cli.common.CLIConfigurationKeys
@@ -21,6 +23,9 @@ import java.io.File
 import java.nio.charset.StandardCharsets
 import java.util.function.Predicate
 import java.util.stream.Stream
+
+internal val REGEXP_BLOCK_COMMENT = Regex("^\\s*[/*]*\\s*(?<content>\\S|\\S.*\\S)?\\s*$")
+internal val REGEXP_LINE_COMMENT = Regex("^///\\s*(?<content>\\S|\\S.*\\S)\\s*$")
 
 internal class Parser(
     val fileSrc: KtFile,
@@ -156,6 +161,35 @@ internal class Parser(
         }
 
         override fun visitClass(klass: KtClass) = visitInClass(klass)
+        override fun visitPrimaryConstructor(constructor: KtPrimaryConstructor) = visitInPrimaryCtor(constructor)
+
+        override fun visitBlockExpression(expression: KtBlockExpression) {
+            expression.acceptChildren(this)
+        }
+
+        override fun visitComment(comment: PsiComment) = visitLineComment(REGEXP_LINE_COMMENT.find(comment.text))
+
+        private fun visitLineComment(matchContent: MatchResult?) {
+
+            if (matchContent != null) {
+                val content = (matchContent.groups as MatchNamedGroupCollection)["content"]?.value ?: ""
+                val matchAssignment = REGEXP_ASSIGNMENT.find(content)
+
+                if (matchAssignment != null) {
+                    // 代入式
+                    val groupAssign = (matchAssignment.groups as MatchNamedGroupCollection)
+                    writer.writeEmptyElement("assignment")
+                    writer.writeAttribute("var", groupAssign["var"]!!.value)
+                    writer.writeAttribute("value", groupAssign["value"]!!.value)
+                }
+                else if (content.isNotBlank()) {
+                    // 処理記述
+                    writer.writeStartElement("description")
+                    writer.writeStrings(content)
+                    writer.writeEndElement()
+                }
+            }
+        }
 
     }
 
