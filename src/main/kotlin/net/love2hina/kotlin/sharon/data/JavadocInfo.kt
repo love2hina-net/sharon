@@ -39,12 +39,34 @@ internal fun Optional<Comment>.parseJavadoc(info: JavadocInfo) {
 
 internal fun KDoc?.parseKdoc(info: JavadocInfo) {
     this?.let {
-        // TODO: KDocの解析
+        val content = getCommentContents(it)
+        var index = 0
+        var name: String? = null
+
+        // KDocをパースする
+        for (match in REGEXP_ANNOTATION.findAll(content)) {
+            index = pushJavadocComment(content, name, index, match.range, info)
+            name = (match.groups as MatchNamedGroupCollection)["name"]!!.value
+        }
+        pushJavadocComment(content, name, index, IntRange(content.length, content.length), info)
     }
 }
 
 private fun getCommentContents(comment: Comment): String =
     comment.content.split(REGEXP_NEWLINE)
+        .stream().map { l ->
+            val m = REGEXP_BLOCK_COMMENT.find(l)
+            if (m != null)
+                (m.groups as MatchNamedGroupCollection)["content"]?.value ?: ""
+            else l
+        }
+        .reduce(StringBuilder(),
+            { b, l -> b.appendNewLine(l) },
+            { b1, b2 -> b1.appendNewLine(b2) })
+        .toString()
+
+private fun getCommentContents(doc: KDoc): String =
+    doc.text.split(REGEXP_NEWLINE)
         .stream().map { l ->
             val m = REGEXP_BLOCK_COMMENT.find(l)
             if (m != null)
