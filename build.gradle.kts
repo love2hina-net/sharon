@@ -6,12 +6,12 @@ import java.io.Writer
 
 buildscript {
     val versions by extra { mapOf<String, Any>(
-        "kotlin" to "1.6.20",
+        "kotlin" to "1.6.21",
         "java" to JavaVersion.VERSION_11,
         "target_jvm" to "11",
         "junit" to "5.8.2",
-        "mockito" to "4.3.1",
-        "doma" to "2.51.0",
+        "mockito" to "4.5.1",
+        "doma" to "2.51.1",
         "h2" to "2.1.210"
     )}
     repositories {
@@ -50,7 +50,7 @@ dependencies {
     implementation(kotlin("compiler:${versions["kotlin"]}"))
 
     // Json Serialization
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.3.2")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.3.3")
 
     // Java Parser
     implementation("com.github.javaparser:javaparser-core:3.24.2")
